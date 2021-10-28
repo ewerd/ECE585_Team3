@@ -56,7 +56,7 @@ int main()
     int print = 0; //print option. Change this to bool
 
     printf("Welcome to the preliminary parser!\n");
-    printf("Press P to print parse values\nPress another key to merely read file:");
+    printf("Press P to print parsed values\nPress another key to merely read file");
     printf("\nEnter here: ");
 
     //fgets(userInput,2,stdin);   //User inputs option.
