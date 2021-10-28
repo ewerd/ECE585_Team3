@@ -127,7 +127,7 @@ void readfile(int *read_time, int *command_type, long *address, int print)
             //to be expanded upon for when times get bigger than 100
             //do we create our own test files?
             //easy to recreate the following if commands for this filetype
-            if (str[2] != ' ')
+            if ((str[2] != ' ') && (str[2] != '\t'))
             {
                 printf("error for now. Fix to work with greater files: ");
                 
@@ -137,7 +137,7 @@ void readfile(int *read_time, int *command_type, long *address, int print)
             
             
             //works for current formatting of file, two integer time numbers
-            if (str[2] == ' ')
+            if ((str[2] == ' ') || (str[2] == '\t'))
             {
                 //PUT ALL THIS BELOW IN ANOTHER FUNCTION
                 //ONE FUNCTION FOR TWO DIGIT TIME AND THREE DIGIT
