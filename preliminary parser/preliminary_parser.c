@@ -2,7 +2,7 @@
 //  main.c
 //  ECE_585_Parse
 //
-//  Created by Drew Seidel, Braden Hardwood, Michael Weston and Stephen Short on 10/26/21.
+//  Created by Drew Seidel, Braden Harwood, Michael Weston and Stephen Short on 10/26/21.
 //
 
 #include <stdlib.h>
