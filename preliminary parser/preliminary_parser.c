@@ -9,10 +9,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#define SIZEARRAYS 10
+#include "preliminary_parser.h"
+#define SIZEARRAYS 100
 
-void readfile(int *read_time, int *command_type, long *address, int print);
-int concat(int a, int b, int c);
 
 /*
 Preliminary parser for file type of ECE 585 project
@@ -27,12 +26,9 @@ Pros:
  Cons:
  -I ask about printing before the filename which makes no sense
  -Memory allocation = basic and poor
- -No structures yet
- -Works only for time < 100 currently, easy to fix and add to
  -One long function for readfile, and a short one for concanate
  -Make seperate functions for data conversions in readfile perhaps
  -Not greatly written
- -Data is lost each iteration through the file (not stored in array etc.)
  -^could be desirable and could not be desirable
 
  
@@ -41,7 +37,6 @@ Pros:
 
 int main()
 {
-
     //make below data into structure
     int rd_time = 0; //read time from file
     int *read_time = &rd_time;
@@ -49,8 +44,8 @@ int main()
     int command = 0; //FETCH, READ, or WRITE. Int for now.
     int *command_type = &command;
 
-    long addrs = 0x00000000; //Memory address being written, read, or fetched to/from
-    long *address = &addrs;
+    long long addrs = 0x0000000000000000; //Memory address being written, read, or fetched to/from
+    long long *address = &addrs;
 
     char userInput[2];
     int print = 0; //print option. Change this to bool
@@ -78,132 +73,198 @@ int main()
     return 0;
 }
 
-void readfile(int *read_time, int *command_type, long *address, int print)
+void readfile(int *read_time, int *command_type, long long *address, int print)
 {
+	struct row_info *tempRow;
+	struct row_info *currentRow;
+	struct row_info *firstRow;
+	char file_name[SIZEARRAYS] = ""; //will read in the name of the file.
+	FILE *fp;                        //file pointer
+	char str[100];                   //string for each row in file
+	char hex_string[100];              //hexidecimal string to be converted to long
+	char request[SIZEARRAYS];        //string to print type of request
 
-    char file_name[SIZEARRAYS] = ""; //will read in the name of the file.
-    FILE *fp;                        //file pointer
-    char str[100];                   //string for each row in file
-    char hex_string[100];            //hexidecimal string to be converted to long
-    char request[SIZEARRAYS];        //string to print type of request
-    
-    //time digits one through three to be converted to integer
-    //current text file uses just two digits for time so far
-    int first_digit = 0;
-    int second_digit = 0;
-    int third_digit = 0;
-    
+	//time digits one through three to be converted to integer
+	//current text file uses just two digits for time so far
+	int count, T_count, A_count;
+	int line = 1;
 
-    //user input filename
-    printf("Enter File Name: ");
-    scanf("%s", file_name);
+	//user input filename
+	printf("Enter File Name: ");
+	scanf("%s", file_name);
 
-    //open file
-    fp = fopen(file_name, "r");
+	//open file
+	fp = fopen(file_name, "r");
 
-    if (fp == NULL)
-    { //file open operation check
+	while (fp == NULL)
+	{ //file open operation check
 
-        printf("\nFile open not successful.\n\n");
-        fclose(fp);
-        fp = NULL;
-        return;
-    }
+		printf("\nFile open not successful.\n\n");
 
-    
-    else
-    {
+		// Allow the user to attempt another filename
+		// file_name[1] = '_';
+		printf("(Press \"Q\" to quit)\nAttempt another filename: ");
+		scanf("%s", file_name);
 
-        printf("\n\n");
-        if (print == 1)
-        {
-            printf("Requests are as follows:\n\n");
-        }
+		// if the user inputs 'q' or 'Q' followed by carriage return, return
+		if (tolower(file_name[0]) == 'q' && file_name[1] == '\0')
+		{
+			fclose(fp);
+			fp = NULL;
+			return;
+		}
+		else
+		{
+			fp = fopen(file_name, "r");
+		}
+	}
 
-        //while not the enf of file
-        while ((fgets(str, 100, fp) != NULL))
-        {
-            
-            //to be expanded upon for when times get bigger than 100
-            //do we create our own test files?
-            //easy to recreate the following if commands for this filetype
-            if ((str[2] != ' ') && (str[2] != '\t'))
-            {
-                printf("error for now. Fix to work with greater files: ");
-                
-                //first_digit =0;      //three digits at least (assume 3 at most for now)
-                //fix later
-            }
-            
-            
-            //works for current formatting of file, two integer time numbers
-            if ((str[2] == ' ') || (str[2] == '\t'))
-            {
-                //PUT ALL THIS BELOW IN ANOTHER FUNCTION
-                //ONE FUNCTION FOR TWO DIGIT TIME AND THREE DIGIT
-                //WILL INCREASE READABILITY AND SENSE
-                // 2 digits file as is now
-                first_digit = 0; //first digit does not exist
-                second_digit = str[0] - '0';    //convert to int
-                third_digit = str[1] - '0';     //convert to int
-                *read_time = concat(first_digit, second_digit, third_digit); //concatanate
+	printf("\n\n");
+	if (print == 1)
+	{
+		printf("Requests are as follows:\n\n");
+	}
 
-                *command_type = str[3] - '0'; //convert command type to int
+	//while not the end of file
+	while ((fgets(str, 128, fp) != NULL))
+	{
+		count = 0;
+		T_count = 0;
+		A_count = 0;
 
-                
-                //convert hex string portion to long hex value
-                if (str[6] == 'x' || str[6] == 'X')
-                {
-                    strcpy(hex_string, &str[7]);
-                    sscanf(hex_string, "%lx", address);
-                    //}
-                }
+		// make a new node in the doubly linked list
+		if ((tempRow = malloc(sizeof(struct row_info))) != NULL)
+		{
+			// first row, points to null on both ends, is first and last row
+			if (line == 1)
+			{
+				// establish tail row
+				firstRow = tempRow;
+				tempRow->prev = NULL;
+				tempRow->next = NULL;
+			}
+			// all other rows, prev row points to new row, new row points to prev
+			else
+			{
+				tempRow->prev = currentRow;
+				currentRow->next = tempRow;
+			}
+			// new head row and prev row becomes new row
+			currentRow = tempRow;
+			currentRow->index = line;
+			currentRow->next = NULL;
+		}
+		else
+		{
+			printf("\nCould not allocate data for rows...\n\n");
+			fclose(fp);
+			return;
+		}
 
-                
-                //CHANGE THIS, THIS IS DUMB
-                if (*command_type == 0)
-                {
-                    strcpy(request, "READ ");
-                }
-                if (*command_type == 1)
-                {
-                    strcpy(request, "WRITE");
-                }
-                if (*command_type == 2)
-                {
-                    strcpy(request, "FETCH");
-                }
+		// read beginning portion of row to eliminate white space
+		while (str[count] == ' ' || str[count] == '\t')
+		{
+			count++;
+		}
 
-                
-                if (print == 1)
-                {
-                    printf("Time = %d, Command attempt = %s, Memory Address = 0x%lx\n", *read_time, request, *address);
-                }
-            }
-        }
-    }
-    printf("\n");
-    fclose(fp);
-    fp = NULL;
+		// opposite procedure to find time
+		while (str[count] != ' ' && str[count] != '\t')
+		{
+			currentRow->time[T_count] = str[count];
+			T_count++;
+			count++;
+		}
+
+		// burn through whitespace again
+		while (str[count] == ' ' || str[count] == '\t')
+		{
+			count++;
+		}
+
+		// find command value
+		while (str[count] != ' ' && str[count] != '\t')
+		{
+			currentRow->command = str[count] - '0';
+			//printf("\n%d\n", currentRow->command);
+			count++;
+		}
+
+		// eliminate white space
+		while (str[count] == ' ' || str[count] == '\t')
+		{
+			count++;
+		}
+
+		// opposite procedure to find address
+		while (str[count] != ' ' && str[count] != '\t')
+		{
+			if (str[count] == '0' && tolower(str[count + 1]) == 'x')
+			{
+				count += 2;
+			}
+
+			currentRow->address[A_count] = str[count];
+			A_count++;
+			count++;
+		}
+
+		//PUT ALL THIS BELOW IN ANOTHER FUNCTION
+		//ONE FUNCTION FOR TWO DIGIT TIME AND THREE DIGIT
+		//WILL INCREASE READABILITY AND SENSE
+		// 2 digits file as is now
+
+		*read_time = atoi(currentRow->time);
+
+
+		//printf("\n%d\n", currentRow->command);
+		*command_type = currentRow->command;
+
+		strcpy(hex_string, &currentRow->address[0]);
+		//printf(hex_string);
+		sscanf(&hex_string[0], "%llx", address);
+
+		//CHANGE THIS, THIS IS DUMB
+		if (currentRow->command == 0)
+		{
+			strcpy(request, "READ");
+		}
+		else if (currentRow->command == 1)
+		{
+			strcpy(request, "WRITE");
+		}
+		else if (currentRow->command == 2)
+		{
+			strcpy(request, "FETCH");
+		}
+
+		if (print == 1)
+		{
+			printf("Time = %d, Command attempt = %s, Memory Address = 0x%llx\n", *read_time, request, *address);
+		}
+		line++;
+	}
+	printf("\n");
+	fclose(fp);
+
+	//while ()
+
+	fp = NULL;
 }
 
 // Function to concatenate
 // three integers into one
-int concat(int a, int b, int c)
+int concat(int a, int b)
 {
 
     char s1[SIZEARRAYS];
     char s2[SIZEARRAYS];
-    char s3[SIZEARRAYS];
 
     // Convert all three of the integers to string
     sprintf(s1, "%d", a);
     sprintf(s2, "%d", b);
-    sprintf(s3, "%d", c);
 
     // Concatenate both strings
     strcat(s1, s2);
-    strcat(s1, s3);
 
     // Convert the concatenated string
     // to integer
@@ -212,4 +273,3 @@ int concat(int a, int b, int c)
     // return the formed integer
     return d;
 }
-
