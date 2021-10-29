@@ -11,7 +11,7 @@ Single Memory Channel
 ## Memory DIMM Information
 8 GB PC4-25600, 24-24-24 Timing
 - 64 Gb Capacity
-  - 1 rank of 8 Chips of 8 Gb x 8
+  - 1 rank of 8 Chips of 1 Gb x 8
   - No ECC
 - 2 KB Page Size
 - 24-24-24 Timing
