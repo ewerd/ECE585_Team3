@@ -99,3 +99,21 @@ Format:
   - Example: Putting a later request first because it is accessing the same row that is already open before another request which would require the row to be closed.
   - Additional ideas available.
 
+
+## Memory Mapping (Draft)
+Values needed: # Rows, # Columns
+\# Columns
+- Page Size known: 2 KB
+- Page Size = 2^ColBits * (Internal Access Size/8)
+  - 2 KB = 16 Kb = 2^ColBits * (64/8)
+  - 16 Kb = 2^ColBits * 8
+  - 2 Kb = 2^ColBits
+  - ColBits = 11
+\# Rows
+- Number of Banks, Number of Bank Groups, and Number of Columns known
+- 1 Gb x 8
+WORK IN PROGRESS
+
+## Proposed Organization
+Rows > Banks > Bank Groups > Columns
+
