@@ -102,18 +102,45 @@ Format:
 
 ## Memory Mapping (Draft)
 Values needed: # Rows, # Columns
-\# Columns
+
+### \# Columns
 - Page Size known: 2 KB
 - Page Size = 2^ColBits * (Internal Access Size/8)
   - 2 KB = 16 Kb = 2^ColBits * (64/8)
   - 16 Kb = 2^ColBits * 8
   - 2 Kb = 2^ColBits
-  - ColBits = 11
-\# Rows
+  - ColBits = 11 bits
+  - Columns = 2^11 = 2K Columns
+
+### \# Rows
 - Number of Banks, Number of Bank Groups, and Number of Columns known
 - 1 Gb x 8
+  - 2 Bits for Bank Groups
+  - 2 Bits for Banks
+  - Rows determined by Capacity and Columns
+    - 1 Gb x 8 Organization for each chip (8 chips total)
+    - 2^30 bits to represent 1 Gb
+    - Capacity / (# Columns * # Banks * # Bank Groups) = 2^30 * (2^-11) * (2^-2) * (2^-2) = 2^15
+    - Rows = 2^15 = 32 K Rows
+
+### \# Bytes from Burst
+- 8 Bytes from Burst
+- 3 bits needed to index which byte is desired, but is not passed on to the DIMM
 WORK IN PROGRESS
+
+### Total Bits
+- Rows = 2^15
+- Columns = 2^11
+- Bank Select = 2^2
+- Bank Group Select = 2^2
+- Byte Select = 2^3
+- Total number of bits = 33
 
 ## Proposed Organization
 MSB: Rows > Banks > Columns[10:3] > Bank Groups >  Columns[2:0] > Byte Select
 -Consider Row/Bank/UpperColumns order with open page policy idea
+
+## Improved Organization
+MSB: Rows > Columns[10:3] > Banks > Bank Groups > Columns[2:0] > Byte Select
+### Reasoning:
+
