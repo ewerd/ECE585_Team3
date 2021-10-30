@@ -14,19 +14,18 @@
 #include <string.h>
 
 #define MAXTIME			100
-#define MAXADDRESS		20
+#define MAXADDRESS		128
 
 // STRUCTS AND GLOBALS
 struct row_info {
-	char				time[MAXTIME];
-	char				address[MAXADDRESS];
 	int					command;
 	int					index;
+	char				time[MAXTIME];
+	char				address[MAXADDRESS];
 	struct row_info		*prev;
 	struct row_info		*next;
 };
 
 // FXN PROTOTYPES
 void readfile(int *read_time, int *command_type, long long *address, int print);
-int concat(int a, int b);
 #endif
