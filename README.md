@@ -115,5 +115,5 @@ Values needed: # Rows, # Columns
 WORK IN PROGRESS
 
 ## Proposed Organization
-Rows > Banks > Bank Groups > Columns
-
+MSB: Rows > Banks > Columns[10:3] > Bank Groups >  Columns[2:0] > Byte Select
+-Consider Row/Bank/UpperColumns order with open page policy idea
