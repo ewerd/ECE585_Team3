@@ -7,6 +7,8 @@ CFLAGS = -Wall -std=c99 -g
 OBJS = preliminary_parser.o
 HDRS = preliminary_parser.h
 
+all : preliminary_parser preliminary_parser.o
+
 preliminary_parser : $(OBJS)
 	$(C) -o preliminary_parser $(OBJS)
 
