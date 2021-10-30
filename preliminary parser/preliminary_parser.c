@@ -185,7 +185,6 @@ void readfile(int *read_time, int *command_type, long long *address, int print)
 		while (str[count] != ' ' && str[count] != '\t')
 		{
 			currentRow->command = str[count] - '0';
-			//printf("\n%d\n", currentRow->command);
 			count++;
 		}
 
@@ -215,8 +214,6 @@ void readfile(int *read_time, int *command_type, long long *address, int print)
 
 		*read_time = atoi(currentRow->time);
 
-
-		//printf("\n%d\n", currentRow->command);
 		*command_type = currentRow->command;
 
 		strcpy(hex_string, &currentRow->address[0]);
@@ -224,15 +221,15 @@ void readfile(int *read_time, int *command_type, long long *address, int print)
 		sscanf(&hex_string[0], "%llx", address);
 
 		//CHANGE THIS, THIS IS DUMB
-		if (currentRow->command == 0)
+		if (*command_type == 0)
 		{
 			strcpy(request, "READ");
 		}
-		else if (currentRow->command == 1)
+		else if (*command_type == 1)
 		{
 			strcpy(request, "WRITE");
 		}
-		else if (currentRow->command == 2)
+		else if (*command_type == 2)
 		{
 			strcpy(request, "FETCH");
 		}
@@ -251,25 +248,4 @@ void readfile(int *read_time, int *command_type, long long *address, int print)
 	fp = NULL;
 }
 
-// Function to concatenate
-// three integers into one
-int concat(int a, int b)
-{
 
-    char s1[SIZEARRAYS];
-    char s2[SIZEARRAYS];
-
-    // Convert all three of the integers to string
-    sprintf(s1, "%d", a);
-    sprintf(s2, "%d", b);
-
-    // Concatenate both strings
-    strcat(s1, s2);
-
-    // Convert the concatenated string
-    // to integer
-    int d = atoi(s1);
-
-    // return the formed integer
-    return d;
-}
