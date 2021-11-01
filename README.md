@@ -141,6 +141,6 @@ MSB: Rows > Banks > Columns[10:3] > Bank Groups >  Columns[2:0] > Byte Select
 -Consider Row/Bank/UpperColumns order with open page policy idea
 
 ## Improved Organization
-MSB: Rows > Columns[10:3] > Banks > Bank Groups > Columns[2:0] > Byte Select
+MSB: Rows[14:0] > Columns[10:3] > Banks[1:0] > Bank Groups[1:0] > Columns[2:0] > Byte Select[2:0]
 ### Reasoning:
 
