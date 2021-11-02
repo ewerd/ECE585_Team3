@@ -1,7 +1,9 @@
 # ECE585_Team3
 Team 3's final project for ECE 485/585 F'21
+
 Braden Harwood, Stephen Short, Michael Weston, Drew Seidel
-*Information sourced from Dr. Faust's Final Project Description
+
+*\*Information sourced from Dr. Faust's Final Project Description and Group Discussion*
 
 ## CPU Information
 4 Core, 3.2 GHz Quad Core
