@@ -17,3 +17,4 @@
 - Queue Overflow. Receiving a 17th instruction before room for it has been made available. <- Keep track of current time and wait until queue is not full to add it and do the same for future instructions after the delay caused by a full queue
 - When the queue is empty, there could be a long time before the next instruction arrives.
   - Solution: Check this condition and make sure all banks and bank groups finish their delays before incrementing the time to the next instruction if its far away.
+- When to clear memory access requests from the queue? When the read command is issued? When the burst starts? When the burst ends?
