@@ -4,14 +4,17 @@
 
 C = gcc
 CFLAGS = -Wall -std=c99 -g
-OBJS = preliminary_parser.o
-#### HDRS = 
+OBJS = memoryController.o mem_queue.o
+HDRS = memoryController.h mem_queue.h
 
-preliminary_parser : $(OBJS)
-	$(C) -o preliminary_parser $(OBJS)
+memoryController : $(OBJS)
+	$(C) -o memoryController $(OBJS)
 
-preliminary_parser.o : preliminary_parser.c
-	$(C) $(CFLAGS) -c preliminary_parser.c
+memoryController.o : memoryController.c
+	$(C) $(CFLAGS) -c $(HDRS) memoryController.c
+
+mem_queue.o : mem_queue.c
+	$(C) $(CFLAGS) -c $(HDRS) mem_queue.c
 
 clean:
-	rm $(OBJS) preliminary_parser.exe
+	rm $(OBJS) memoryController.exe
