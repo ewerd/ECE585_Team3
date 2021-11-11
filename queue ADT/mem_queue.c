@@ -72,11 +72,8 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	}
 	else
 	{
-		// successful allocation; point insert command pointer into new queueItem
+		// successful allocation; point insert command struct into new queueItem
 		queueItem->command = *command;
-
-		//print_queue(queue, 1, true);
-
 		queueItem->prev = NULL;
 		queueItem->next = NULL;
 
@@ -87,7 +84,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 			queue->firstCommand = queueItem;
 			queue->lastCommand = queueItem;
 
-			// indexes labeled 0 to 15 -> eldest to newest (changeable if desired)
+			// indexes labeled 1 to 16 -> eldest to newest (changeable if desired)
 			queueItem->index = 1; 
 		}
 		else
