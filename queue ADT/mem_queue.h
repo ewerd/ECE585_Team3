@@ -46,7 +46,7 @@ typedef struct queueItem_s
 } queueItem_t, *queueItemPtr_t;
 
 
-// STRUCTURE: queue is oriented so that 15 represents most recent element (back of queue) and 0 represents oldest element (front of queue)
+// STRUCTURE: queue is oriented so that 16 represents most recent element (back of queue) and 1 represents oldest element (front of queue)
 typedef struct queue_s
 {
 	int			size;		// amount of items in queue
