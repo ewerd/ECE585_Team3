@@ -72,8 +72,9 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	}
 	else
 	{
-		// successful allocation; point insert command struct into new queueItem
+		// successful allocation; insert command into new queueItem
 		queueItem->command = *command;
+
 		queueItem->prev = NULL;
 		queueItem->next = NULL;
 
@@ -99,7 +100,6 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 
 			// set new queue item to back of queue (bigger index), and queue points next NULL because now back of queue
 			queue->lastCommand = queueItem;
-			//printf("\n%d, %d\n", queueItem->prev, queueItem);
 			queueItem->next = NULL;
 
 		}
@@ -113,18 +113,23 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 void remove_queue_item(int index, queuePtr_t queue)
 {
 	//variables:
-	queueItemPtr_t temp = queue->firstCommand;
+	queueItemPtr_t next, temp = queue->firstCommand;
+
 	bool removed = false;
 
-	for (int x = 0; x < queue->size; x++)
+	for (int x = 1; x <= queue->size; x++)
 	{
 		// iterate through queue and free selected index
-		if (temp->index == index)
+		if (temp->index == index && !removed)
 		{
 			// if next isn't NULL, assign
 			if (temp->next != NULL)
 			{
 				temp->next->prev = temp->prev;
+			}
+			else
+			{
+				queue->lastCommand = temp->prev;
 			}
 
 			// if prev isn't NULL, assign
@@ -132,10 +137,16 @@ void remove_queue_item(int index, queuePtr_t queue)
 			{
 				temp->prev->next = temp->next;
 			}
+			else
+			{
+				queue->firstCommand = temp->next;
+			}
 
 			// once prev and next properly assigned, free temp
+			next = temp->next;
 			free(temp);
-
+			temp = next;
+			queue->size--;
 			// set flag for index removed
 			removed = true;
 		}
@@ -161,7 +172,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 {
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
-
+	printf("\n\nQUEUE:\n");
 	// go through queue items and print out relevant information for debugging
 	for (int x = 1; x < queue->size; x++)
 	{
@@ -170,7 +181,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 			// shortener variable for readability
 			inputCommand_t cmd = temp->command;
 
-			printf("\nItem: %d\t, Time = %10lld, Address = 0x%010llX\n", temp->index, cmd.cpuCycle, cmd.address);
+			printf("Item: %d\t, Time = %10lld, Address = 0x%010llX\n", temp->index, cmd.cpuCycle, cmd.address);
 
 			if (temp->next != NULL)
 			{
@@ -178,6 +189,6 @@ void print_queue(queuePtr_t queue, int index, bool all)
 			}
 		}
 	}
+	printf("\n\n");
 }
-
 

@@ -24,13 +24,13 @@ typedef enum _operation_e { READ, WRITE, IFETCH } operation_t;
 // define row from file separation
 typedef struct _cpu_command_s 
 {
-	long long		cpuCycle;
+	long long			cpuCycle;
 	operation_t 		command;
-	long long 		address;	// 33 bits
+	long long 			address;		// 33 bits
 	// Could make these smaller bit widths.
-	unsigned int 		rows; 		// 15 bits
+	unsigned int 		rows; 			// 15 bits
 	unsigned int		upperColumns; 	//  8 bits
-	unsigned int		banks; 		//  2 bits
+	unsigned int		banks; 			//  2 bits
 	unsigned int		bankGroups; 	//  2 bits
 	unsigned int		lowerColumns; 	//  3 bits
 	unsigned int		byteSelect; 	//  3 bits
@@ -39,9 +39,9 @@ typedef struct _cpu_command_s
 typedef struct queueItem_s 
 {
 	int index;
-	struct queueItem_s	*prev;		// previous item in Queue
-	struct queueItem_s	*next;		// next item in Queue
-	inputCommand_t		command;	// pointer to row item struct w/ address and cpu cycle time
+	struct queueItem_s	*prev;			// previous item in Queue
+	struct queueItem_s	*next;			// next item in Queue
+	inputCommand_t		command;		// pointer to row item struct w/ address and cpu cycle time
 
 } queueItem_t, *queueItemPtr_t;
 
@@ -49,8 +49,8 @@ typedef struct queueItem_s
 // STRUCTURE: queue is oriented so that 16 represents most recent element (back of queue) and 1 represents oldest element (front of queue)
 typedef struct queue_s
 {
-	int			size;		// amount of items in queue
-	long long		cpuCounter;	// which increment the program is on
+	int					size;			// amount of items in queue
+	long long			cpuCounter;		// which increment the program is on
 	queueItemPtr_t		firstCommand;	// pointer to first item in queue
 	queueItemPtr_t		lastCommand;	// pointer to last item in queue
 
@@ -62,9 +62,9 @@ typedef struct queue_s
 * FUNCTION:			create_queue
 *
 * INFO:				Initiates a queue ADT to be populated by the memory simulator 
-*				with queue items which hold all the information about the memory 
-*				requests. This should only be called once at the beginning of a 
-*				given simulation.
+*					with queue items which hold all the information about the memory 
+*					requests. This should only be called once at the beginning of a 
+*					given simulation.
 *
 * PARAMS:			none
 *
@@ -79,7 +79,7 @@ queuePtr_t create_queue();
 *					
 *
 * PARAMS:			queuePtr_t queue (queue to be inserted into)
-*				inputCommandPtr_t item (item to be inserted)
+*					inputCommandPtr_t item (item to be inserted)
 *
 * RETURNS:			queueItemPtr_T (pointer to newly inserted queue item)
 */
@@ -92,7 +92,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command);
 *
 *
 * PARAMS:			int index (integer index of queue item to be removed)
-*				queuePtr_t queue (queue to be removed from)
+*					queuePtr_t queue (queue to be removed from)
 *
 * RETURNS:			TBD (void for now)
 */
@@ -105,8 +105,8 @@ void remove_queue_item(int index, queuePtr_t queue);
 *
 *
 * PARAMS:			queuePtr_t queue (queue to be accessed)
-*				int index (integer index of item to be printed)
-*				bool all (if true will print all items; default false)
+*					int index (integer index of item to be printed)
+*					bool all (if true will print all items; default false)
 *
 * RETURNS:			TBD (void for now and just prints to console)
 */
