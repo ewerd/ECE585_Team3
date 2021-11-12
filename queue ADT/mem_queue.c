@@ -40,7 +40,6 @@ queuePtr_t create_queue()
 	{
 		queue->firstCommand = NULL;
 		queue->size = 0;
-		queue->cpuCounter = (long long)0;
 
 		return queue;
 	}
@@ -74,9 +73,9 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	{
 		// successful allocation; insert command into new queueItem
 		queueItem->command = *command;
-
 		queueItem->prev = NULL;
 		queueItem->next = NULL;
+		queueItem->age = 0;
 
 		// determine if queue is empty
 		if (queue->firstCommand == NULL)
@@ -101,7 +100,6 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 			// set new queue item to back of queue (bigger index), and queue points next NULL because now back of queue
 			queue->lastCommand = queueItem;
 			queueItem->next = NULL;
-
 		}
 
 		// increment queue size and return new queue item pointer
@@ -109,6 +107,25 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 		return queueItem;
 	}
 }	
+
+queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
+{
+	// variables:
+	queueItemPtr_t temp = queue->firstCommand;
+
+	// go through queue and age each queue item
+	for (int x = 1; x < queue->size; x++)
+	{
+		// index found, return pointer to queueItem
+		if (x == index)
+		{
+			return temp;
+		}
+
+		// index not found, incrememnt to next node
+		temp = temp->next;
+	}
+}
 
 void remove_queue_item(int index, queuePtr_t queue)
 {
@@ -130,6 +147,7 @@ void remove_queue_item(int index, queuePtr_t queue)
 			else
 			{
 				queue->lastCommand = temp->prev;
+				temp->prev->next = NULL;
 			}
 
 			// if prev isn't NULL, assign
@@ -140,6 +158,7 @@ void remove_queue_item(int index, queuePtr_t queue)
 			else
 			{
 				queue->firstCommand = temp->next;
+				temp->next->prev = NULL;
 			}
 
 			// once prev and next properly assigned, free temp
@@ -164,7 +183,23 @@ void remove_queue_item(int index, queuePtr_t queue)
 				temp = temp->next;
 			}
 		}
+	}
+}
 
+void age_queue(queuePtr_t queue, unsigned long long increment)
+{
+	// variables:
+	queueItemPtr_t temp = queue->firstCommand;
+
+	// go through queue and age each queue item
+	for (int x = 1; x < queue->size; x++)
+	{
+		temp->age += increment;
+
+		if (temp->next != NULL)
+		{
+			temp = temp->next;
+		}
 	}
 }
 

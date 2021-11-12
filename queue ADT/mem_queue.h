@@ -39,6 +39,7 @@ typedef struct _cpu_command_s
 typedef struct queueItem_s 
 {
 	int index;
+	unsigned long long	age;			// how long the queue item has been in the queue
 	struct queueItem_s	*prev;			// previous item in Queue
 	struct queueItem_s	*next;			// next item in Queue
 	inputCommand_t		command;		// pointer to row item struct w/ address and cpu cycle time
@@ -50,7 +51,6 @@ typedef struct queueItem_s
 typedef struct queue_s
 {
 	int					size;			// amount of items in queue
-	long long			cpuCounter;		// which increment the program is on
 	queueItemPtr_t		firstCommand;	// pointer to first item in queue
 	queueItemPtr_t		lastCommand;	// pointer to last item in queue
 
@@ -77,7 +77,6 @@ queuePtr_t create_queue();
 *
 * INFO:				Inserts a provided queue item to the back of a provided queuePtr_t (queue pointer).
 *					
-*
 * PARAMS:			queuePtr_t queue (queue to be inserted into)
 *					inputCommandPtr_t item (item to be inserted)
 *
@@ -86,10 +85,21 @@ queuePtr_t create_queue();
 queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command);
 
 /**
+* FUNCTION:			peak_queue_item
+*
+* INFO:				Peaks at a provided queue item (queue pointer).
+*					
+* PARAMS:			queuePtr_t queue (queue to be inserted into)
+*					queuePtr_t index (index of desired item)
+*
+* RETURNS:			queueItemPtr_T (pointer to peaked at queue item)
+*/
+queueItemPtr_t peak_queue_item(int index, queuePtr_t queue);
+
+/**
 * FUNCTION:			remove_queue_item
 *
 * INFO:				Removes an item from the queue (completed memory request)
-*
 *
 * PARAMS:			int index (integer index of queue item to be removed)
 *					queuePtr_t queue (queue to be removed from)
@@ -99,10 +109,21 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command);
 void remove_queue_item(int index, queuePtr_t queue);
 
 /**
+* FUNCTION:			age_queue
+*
+* INFO:				ages all the items of the queue by a given ull increment
+*
+* PARAMS:			queuePtr_t queue (queue to be accessed)
+*					ull increment (integer index of item to be printed)
+*
+* RETURNS:			N/A
+*/
+void age_queue(queuePtr_t queue, unsigned long long increment);
+
+/**
 * FUNCTION:			print_queue
 *
 * INFO:				prints out one or all the item's information in the queue
-*
 *
 * PARAMS:			queuePtr_t queue (queue to be accessed)
 *					int index (integer index of item to be printed)
