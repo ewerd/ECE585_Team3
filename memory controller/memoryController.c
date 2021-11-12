@@ -30,48 +30,52 @@ void printCurrentLine(inputCommandPtr_t currentCommandLine);
 
 int main()
 {
-    // create and initiate queue
+	// create and initiate queue
 	queuePtr_t queue = create_queue();
 
 	// Set Debug Option
 	// Should set this up to be a command line argument
-    bool printDebug = debugMode();
-	
+	bool printDebug = debugMode();
+
 	// Open input file
-	FILE *inputFile = openFile(); 
-	
+	FILE *inputFile = openFile();
+
 	// Set start time for CPU Clock Cycles
 	long long cpuTime = 0;
-	
+
 	// Use a boolean value to determine if the file is empty or not
 	bool fileEmpty = false;
-	
-	
+
+
 	inputCommandPtr_t currentCommandLine = NULL;
 	if ((currentCommandLine = malloc(sizeof(inputCommand_t))) == NULL) {
 		printf("Error: Unable to malloc new command line.\n");
 		exit(1);
 	}
-	
-	
-	
+
+
+
 	if (printDebug == true)
 	{
 		printf("Requests are as follows:\n\n");
 		// Read first line
 		fileEmpty = readLine(inputFile, currentCommandLine);
+		insert_queue_item(queue, currentCommandLine);
+		print_queue(queue, 1, true);
 
 		// attempt to set up queue
-		insert_queue_item(queue, currentCommandLine);
-		while(fileEmpty == false)
+		printf("\nItems will be shown as they are parsed. After each item is parsed, it will be\n"
+			"added to the queue. The entire contents of the queue will then be printed to\n"
+			"to demonstrate that the queue is adding parsed elements correctly.\n\n");
+		while (fileEmpty == false)
 		{
 			printCurrentLine(currentCommandLine);
 			fileEmpty = readLine(inputFile, currentCommandLine);
 			insert_queue_item(queue, currentCommandLine);
+			print_queue(queue, 1, true);
 		}
 	}
-	
-	
+
 	//while((fileEmpty == false) && (isQueueEmpty() == false))
 	//{
 	//	// Determine if we need to get another line
@@ -98,9 +102,23 @@ int main()
 	//	
 	//	
 	//}
-	
 	free(currentCommandLine);
-	print_queue(queue, 1, true);
+
+	char indexInput[10];
+	int indexRemove;
+
+	printf("\n\nSelect an index to remove from the queue (press 'q' to quit): ");
+	scanf("%s", indexInput);
+
+	while (indexInput[0] != 'q')
+	{
+		indexRemove = atoi(indexInput);
+		remove_queue_item(indexRemove, queue);
+		print_queue(queue, 1, true);
+		printf("\n\nSelect an index to remove from the queue (press 'q' to quit): ");
+		scanf("%s", indexInput);
+	}
+
     return 0;
 }
 
