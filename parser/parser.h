@@ -45,7 +45,6 @@ typedef struct _parser_s
 } parser_t, *parserPtr_t;
 
 // Function Definitions
-
 /**
 * FUNCTION:			initParser
 *
