@@ -230,7 +230,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 			// shortener variable for readability
 			inputCommandPtr_t cmd = temp->command;
 
-			printf("Item: %d\t, Time = %10lld, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
+			printf("Item: %2d\t, Time = %10lld, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
 
 			if (temp->next != NULL)
 			{
