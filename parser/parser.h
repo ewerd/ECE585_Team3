@@ -62,6 +62,10 @@ typedef struct _parser_s
 */
 parserPtr_t initParser(char* inputFile);
 
+inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime);
+
+void prepCommand(parserPtr_t parser);
+
 /**
 * FUNCTION:			getLine
 *
@@ -97,7 +101,7 @@ parserPtr_t initParser(char* inputFile);
 */
 parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime);
 
-const char* getCommand(operation_t command);
-const char* getParserState(parser_state_t state)
+const char* getCommandString(operation_t command);
+const char* getParserState(parser_state_t state);
 
 #endif

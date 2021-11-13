@@ -48,14 +48,108 @@ parserPtr_t initParser(char* inputFile)
 			exit(EXIT_FAILURE);
 		}
 		
-		newParser->lineState = READY; // Nothing currently read yet
+		newParser->lineState = PARSE_ERROR;
 		
 		// Grab first line and update state accordingly
-		getLine(newParser, newParser->nextLine, 0);
+		//getLine(newParser, newParser->nextLine, 0);
+		while (newParser->lineState == PARSE_ERROR)
+		{
+			prepCommand(newParser);
+		}
 		
+		#ifdef DEBUG
+			printf("parser: Initialized new parser. Parser state:%s\n",getParserState(newParser->lineState));
+		#endif
+
 		return newParser; // Return the new parser ADT
 	}
 
+}
+
+inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
+{
+	if (parser->nextLine == NULL)
+		return NULL;
+
+		#ifdef DEBUG
+			printf("Parser: Next command at time %llu. Current time %llu\n", parser->nextLine->cpuCycle, currentTime);
+		#endif
+	if (parser->nextLine->cpuCycle <= currentTime)
+	{
+		#ifdef DEBUG
+			printf("Parser: Returning command. Then parsing new command.\n");
+		#endif
+		inputCommandPtr_t newCommand = parser->nextLine;
+		do{
+			prepCommand(parser);
+		}while (parser->lineState == PARSE_ERROR);
+		return newCommand;
+	}
+	#ifdef DEBUG
+		printf("Parser: Holding on to command and returning NULL.\n");
+	#endif
+	return NULL;
+}
+
+void prepCommand(parserPtr_t parser)
+{
+	#ifdef DEBUG
+		printf("Parser: Parsing new line\n");
+	#endif
+	char inputLine[128];
+		
+	if (fgets(inputLine, 128, parser->filename) == NULL)
+	{ // Returns ENDOFFILE if it reaches the end of the file
+		#ifdef DEBUG
+			printf("Parser: Encountered end of file.\n");
+		#endif
+		parser->lineState = ENDOFFILE;
+		parser->nextLine = NULL;
+		return;
+	}
+
+	#ifdef DEBUG
+		printf("Parser read in:%s\n",inputLine);
+	#endif
+	
+	// Not end of file
+	int numFields;
+	
+	unsigned commandInt;
+	unsigned long long time;
+	unsigned long long address;
+	numFields = sscanf(inputLine, " %llu %d %llx\n", &time, &commandInt, &address);
+	
+	if (numFields != 3)
+	{
+		fprintf(stderr,"Error, incorrect number of fields parsed from file.\nThis line: ");
+		fprintf(stderr,"%s", inputLine);
+		parser->lineState = PARSE_ERROR;
+		parser->nextLine = NULL;
+		return;
+	}
+
+	// Allocate memory for next line
+	if ((parser->nextLine = malloc(sizeof(inputCommand_t))) == NULL)
+	{
+		fprintf(stderr, "\nError getLine: could not allocate space for new command struct.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	parser->nextLine->cpuCycle = time;
+	parser->nextLine->command = (operation_t)commandInt;
+	parser->nextLine->address = address;
+	parser->nextLine->rows = address & 0x1FFFC0000 >> 18;
+	parser->nextLine->upperColumns = address & 0x3FC00 >> 10;
+	parser->nextLine->banks = address & 0x300 >> 8;
+	parser->nextLine->bankGroups = address & 0xC0 >> 6;
+	parser->nextLine->lowerColumns = address & 0x38 >> 3;
+	parser->nextLine->byteSelect = address & 0x7;
+	parser->nextLineTime = time;
+	parser->lineState = READY;
+	#ifdef DEBUG
+		printCurrentLine(parser->nextLine);
+	#endif
 }
 
 parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime)
@@ -152,10 +246,10 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 
 void printCurrentLine(inputCommandPtr_t currentCommandLine)
 {
-	printf("PARSER, Completed Parsing Line: Time = %10llu, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommand(currentCommandLine->command), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
+	printf("PARSER, Completed Parsing Line: Time = %10llu, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommandString(currentCommandLine->command), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
 }
 
-const char* getCommand(operation_t command)
+const char* getCommandString(operation_t command)
 {
    switch (command) 
    {
@@ -176,4 +270,5 @@ const char* getParserState(parser_state_t state)
 		case READY: return "READY";
 		case ENDOFFILE: return "ENDOFFILE";
 	}
+	return "ERROR";
 }
