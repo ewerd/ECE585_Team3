@@ -72,7 +72,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	else
 	{
 		// successful allocation; insert command into new queueItem
-		queueItem->command = *command;
+		queueItem->command = command;
 		queueItem->prev = NULL;
 		queueItem->next = NULL;
 		queueItem->age = 0;
@@ -217,9 +217,9 @@ void print_queue(queuePtr_t queue, int index, bool all)
 		if (x == index || all) 
 		{
 			// shortener variable for readability
-			inputCommand_t cmd = temp->command;
+			inputCommandPtr_t cmd = temp->command;
 
-			printf("Item: %d\t, Time = %10lld, Address = 0x%010llX\n", temp->index, cmd.cpuCycle, cmd.address);
+			printf("Item: %d\t, Time = %10lld, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
 
 			if (temp->next != NULL)
 			{
@@ -230,3 +230,12 @@ void print_queue(queuePtr_t queue, int index, bool all)
 	printf("\n\n");
 }
 
+bool is_empty(queuePtr_t queue)
+{
+	return (queue->size == 0);
+}
+
+bool is_full(queuePtr_t queue)
+{
+	return (queue->size == 16);
+}

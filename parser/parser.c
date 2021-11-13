@@ -23,7 +23,6 @@ Check if line is empty
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
-#include <limits.h>
 #include "parser.h"
 
 // Helper Functions:
@@ -153,7 +152,7 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 
 void printCurrentLine(inputCommandPtr_t currentCommandLine)
 {
-	printf("Time = %10lld, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommand(currentCommandLine->command), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
+	printf("PARSER, Completed Parsing Line: Time = %10lld, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommand(currentCommandLine->command), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
 }
 
 const char* getCommand(operation_t command)

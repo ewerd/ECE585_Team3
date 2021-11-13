@@ -31,7 +31,13 @@ int main(int argc, char** argv)
 	//Init parser
 	//TODO Call initialization function for parser. Pass char* inputFile as argument.
 	//TODO inputFile will point to a \0 terminated string that is the name of the input trace file
-
+	parserPtr_t parser = initParser(inputFile);
+	parser_state_t parser_state;
+	
+	//Initialize pointer to command line that is used as a go between the parser and the queue
+	inputCommandPtr_t currentCommandLine = NULL;
+	unsigned long long nextCommandLineJumpTime = 0;
+	
 	//Init queue
 	queuePtr_t commandQueue = create_queue();
 	if (commandQueue = NULL)
@@ -49,9 +55,29 @@ int main(int argc, char** argv)
 	//***********************************************************************************************
 	//
 	// TODO FOR SATURDAY:
-	// WHILE parser isn't finished AND command queue isn't empty:
+	// WHILE parser isn't finished OR command queue isn't empty:
+	while((parser->lineState != ENDOFFILE) || (is_empty(commandQueue) == false))
+	{
 	// 	IF queue isn't full, pass parser current time and pointer to a inputCommand_t
+	//     and IF the we are not at the end of the file
+		if ((is_full(commandQueue) == false) && (parser->lineState != ENDOFFILE))
+		{
+			//DO WHILE parser returns a parsing error, keep trying to get another line
 	// 		IF that pointer returns non-NULL, add it to queue
+			do
+			{
+				parser_state = getLine(parser, currentCommandLine, currentTime);
+				if (parser_state == VALID)
+				{
+					// Current command line is ready for the current time to be added to the queue
+					insert_queue_item(commandQueue, currentCommandLine);
+				}
+				else if (parser_state == FUTURE)
+				{
+					nextCommandLineJumpTime = parser->nextLineTime;
+				}
+			} while(parser_state == PARSE_ERROR); // Keep trying until you get a valid or future line
+		}
 	//	FOR EACH command in the queue:
 	//		IF it's age is >= 100, remove it and print output message
 	//	Check age of oldest entry in queue
@@ -60,6 +86,7 @@ int main(int argc, char** argv)
 	//	Advance current time by that calculated time
 	//	Age items in queue by time advanced
 	//      Loop back to start of WHILE loop
+	}
 	// garbage collection for queue and parser
 	//
 	//***********************************************************************************************

@@ -42,7 +42,7 @@ typedef struct queueItem_s
 	unsigned long long	age;			// how long the queue item has been in the queue
 	struct queueItem_s	*prev;			// previous item in Queue
 	struct queueItem_s	*next;			// next item in Queue
-	inputCommand_t		command;		// pointer to row item struct w/ address and cpu cycle time
+	inputCommandPtr_t	command;		// pointer to row item struct w/ address and cpu cycle time
 
 } queueItem_t, *queueItemPtr_t;
 
@@ -132,4 +132,26 @@ void age_queue(queuePtr_t queue, unsigned long long increment);
 * RETURNS:			TBD (void for now and just prints to console)
 */
 void print_queue(queuePtr_t queue, int index, bool all);
+
+/**
+* FUNCTION:			is_empty
+*
+* INFO:				checks to see if the queue is currently empty
+*
+* PARAMS:			queuePtr_t queue (queue to be accessed)
+*
+* RETURNS:			boolean true if empty, false if not empty
+*/
+bool is_empty(queuePtr_t queue);
+
+/**
+* FUNCTION:			is_full
+*
+* INFO:				checks to see if the queue is currently full
+*
+* PARAMS:			queuePtr_t queue (queue to be accessed)
+*
+* RETURNS:			boolean true if full, false if not full
+*/
+bool is_full(queuePtr_t queue);
 #endif
