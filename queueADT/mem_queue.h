@@ -14,7 +14,6 @@
 #include <string.h>
 
 #define SIZEQUEUE 16
-#define DEBUG 1
 
 // STRUCTS AND GLOBALS
 
