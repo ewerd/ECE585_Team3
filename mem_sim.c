@@ -74,7 +74,7 @@ int main(int argc, char** argv)
 		#ifdef DEBUG
 		Printf("mem_sim: Top of operating loop. Status is as follows:\n");
 		Printf("Current Time: %llu\n", currentTime);
-		Printf("State of parser: %d\n", parser->lineState);
+		Printf("State of parser: %d\n", getCommand(parser->lineState));
 		Printf("Size of command Queue: %d\n", commandQueue->size);
 		if (!is_empty(commandQueue))
 		{
@@ -89,7 +89,7 @@ int main(int argc, char** argv)
 	// 		IF that pointer returns non-NULL, add it to queue
 			parser_state = getLine(parser, currentCommandLine, currentTime);
 			#ifdef DEBUG
-				Printf("mem_sim:Checked parser for new command. Returned state was %d\n",parser_state);
+				Printf("mem_sim:Checked parser for new command. Returned state was %d\n",getCommand(parser_state));
 			#endif
 			if (parser_state == PARSE_ERROR)
 			{
