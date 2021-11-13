@@ -11,16 +11,28 @@
 #include "./queueADT/mem_queue.h"
 #include "./parser/parser.h"
 #include <stdarg.h>
+#include <limits.h>
 
 /*
  * Helper function declarations.
  */ 
 char* parseArgs(int argc, char** argv);
 void Printf(char* format, ...);
+void Fprintf(FILE* stream, char* format, ...);
+queueItemPtr_t peakCommand(int index);
+void printRemoval(queueItemPtr_t item);
+void garbageCollection(void);
+
+/*
+ * Global variables
+ */
+unsigned long long currentTime;
+queuePtr_t commandQueue;
+
 
 int main(int argc, char** argv)
 {
-	//Parse arguments if we're passing them on the command line
+	//Parse arguments we're passing from on the command line
 	char* inputFile = parseArgs(argc,argv);
 	if (inputFile == NULL)
 	{
@@ -29,18 +41,15 @@ int main(int argc, char** argv)
 	}
 
 	//Init parser
-	//TODO Call initialization function for parser. Pass char* inputFile as argument.
-	//TODO inputFile will point to a \0 terminated string that is the name of the input trace file
 	parserPtr_t parser = initParser(inputFile);
 	parser_state_t parser_state;
 	
 	//Initialize pointer to command line that is used as a go between the parser and the queue
 	inputCommandPtr_t currentCommandLine = NULL;
-	unsigned long long nextCommandLineJumpTime = 0;
 	
 	//Init queue
-	queuePtr_t commandQueue = create_queue();
-	if (commandQueue = NULL)
+	commandQueue = create_queue();
+	if (commandQueue == NULL)
 	{
 		Printf("Error in mem_sim: Could not create command queue.\n");
 		return -1;
@@ -49,45 +58,86 @@ int main(int argc, char** argv)
 	//Init DIMM
 
 	//Initialize global time variable
-	unsigned long long currentTime = 0;
+	currentTime = 0;
 
 	//Main operating loop
 	//***********************************************************************************************
 	//
 	// TODO FOR SATURDAY:
 	// WHILE parser isn't finished OR command queue isn't empty:
-	while((parser->lineState != ENDOFFILE) || (is_empty(commandQueue) == false))
+	while(1)
 	{
 	// 	IF queue isn't full, pass parser current time and pointer to a inputCommand_t
 	//     and IF the we are not at the end of the file
-		if ((is_full(commandQueue) == false) && (parser->lineState != ENDOFFILE))
+		if ((is_full(commandQueue) == false) && (parser_state != ENDOFFILE))
 		{
-			//DO WHILE parser returns a parsing error, keep trying to get another line
 	// 		IF that pointer returns non-NULL, add it to queue
-			do
+			parser_state = getLine(parser, currentCommandLine, currentTime);
+			
+			if (parser_state == PARSE_ERROR)
 			{
-				parser_state = getLine(parser, currentCommandLine, currentTime);
-				if (parser_state == VALID)
+				Fprintf(stderr, "Error in mem_sim: Parser unable to parse line.\n");
+				garbageCollection();
+				return -1;
+			}
+			else if (parser_state == VALID)
+			{
+				// Current command line is ready for the current time to be added to the queue
+				if(insert_queue_item(commandQueue, currentCommandLine) == NULL)
 				{
-					// Current command line is ready for the current time to be added to the queue
-					insert_queue_item(commandQueue, currentCommandLine);
+					Fprintf(stderr,"Error in mem_sim: Failed to insert command into command queue.\n");
+					garbageCollection();
+					return -1;
 				}
-				else if (parser_state == FUTURE)
-				{
-					nextCommandLineJumpTime = parser->nextLineTime;
-				}
-			} while(parser_state == PARSE_ERROR); // Keep trying until you get a valid or future line
+			}
 		}
-	//	FOR EACH command in the queue:
-	//		IF it's age is >= 100, remove it and print output message
-	//	Check age of oldest entry in queue
-	//	Ask parser when next command arrives (this would be nice but not required by saturday)
-	//	Determine which of the previous two times is smaller
-	//	Advance current time by that calculated time
-	//	Age items in queue by time advanced
-	//      Loop back to start of WHILE loop
+		// FOR EACH command in the queue:
+		for (int i = 1; i <= commandQueue->size; i++)
+		{
+			queueItemPtr_t current = peakCommand(i);
+			// IF it's age is >= 100, remove it and print output message
+			if (current->age >= 100)
+			{
+				printRemoval(current);
+				remove_queue_item(i, commandQueue);
+				i--;
+			}
+		}
+		if (is_empty(commandQueue) && parser_state == ENDOFFILE)
+		{
+			Printf("At time %llu, last command removed from queue. Ending simulation.\n");
+			break;
+		}
+
+		unsigned long long timeJump = ULLONG_MAX;
+		// Check age of oldest entry in queue
+		if (!is_empty(commandQueue))
+		{
+			queueItemPtr_t top = peakCommand(1);
+			timeJump = 100 - top->age;
+		}
+		// Ask parser when next command arrives (this would be nice but not required by saturday)
+		if (parser->lineState != ENDOFFILE)
+		{
+			// Determine which of the previous two times is smaller
+			timeJump = (timeJump < parser->nextLineTime) ? timeJump : parser->nextLineTime;
+		}
+		// Check if the time jump would take us past the limit of the simulation
+		if (currentTime + timeJump < currentTime)
+		{
+			Printf("Simulation exceeded max simulation time of %llu. Ending simulation", ULLONG_MAX);
+			break;
+		}
+		// Advance current time by that calculated time
+		currentTime += timeJump;
+		// Age items in queue by time advanced
+		age_queue(commandQueue, timeJump);
+		// Loop back to start of WHILE loop
 	}
 	// garbage collection for queue and parser
+
+	garbageCollection();
+	return 0;
 	//
 	//***********************************************************************************************
 
@@ -110,6 +160,70 @@ int main(int argc, char** argv)
 }
 
 /**
+ * @fn		garbageCollection
+ * @breif	Free up dynamically allocated memory and close file descriptors
+ */
+void garbageCollection()
+{
+	if(commandQueue)
+	{
+		while (!is_empty(commandQueue))
+		{
+			remove_queue_item(1, commandQueue);
+		}
+	}
+}
+
+void printRemoval(queueItemPtr_t item)
+{
+	Printf("\nAt time %llu, removed the following command inserted at %llu\n", currentTime, currentTime-item->age);
+	Printf("Trace Time:%llu, Command:%d, Addr:%llu\n",item->command->cpuCycle, item->command->command, item->command->address);
+}
+
+/**
+ * @fn		peakCommand
+ * @brief	Wrapper function for peaking at items in the command queue
+ *
+ * @param	index	Index that will be peaked in commandQueue
+ * @returns	Pointer to the queue item at the index.
+ */
+queueItemPtr_t peakCommand(int index)
+{
+	queueItemPtr_t item = peak_queue_item(index, commandQueue);
+	if (item == NULL)
+	{
+		Fprintf(stderr, "Error in mem_sim: Invalid reference to command queue at index %d.\nDumping contents of command queue to stdout.\n", index);
+		print_queue(commandQueue, index, true);
+		garbageCollection();
+		exit(EXIT_FAILURE);
+	}
+	return item;
+}
+
+/**
+ * @fn		Fprintf
+ * @brief	Wrapper function for fprintf to catch errors
+ *
+ * @param	stream	fd of the target output file
+ * @param	format	A format string provided to printf
+ * @param	...	All other variables required for the given format string
+ */
+void Fprintf(FILE* stream, char* format, ...)
+{
+	va_list args;
+	va_start (args, format);
+	int result = vfprintf(stream, format, args);
+	va_end(args);
+
+	if (result < 0) //If the print was not successful, alert user via stderr and exit
+	{
+		perror("Error in mem_sim: Error calling fprintf()");
+		garbageCollection();
+		exit(EXIT_FAILURE);
+	}
+}
+
+/**
  * @fn		Printf
  * @brief	Wrapper function for printf to catch errors
  *
@@ -126,6 +240,7 @@ void Printf(char* format, ...)
 	if (result < 0) //If the print was not successful, alert user via stderr, collect garbage, and exit
 	{
 		perror("Error in mem_sim: Error calling printf()");
+		garbageCollection();
 		exit(EXIT_FAILURE);
 	}
 }
