@@ -59,6 +59,10 @@ int main(int argc, char** argv)
 
 	//Initialize global time variable
 	currentTime = 0;
+	
+	#ifdef DEBUG
+	Printf("mem_sim: Completed initializations. Starting simulation.\n");
+	#endif
 
 	//Main operating loop
 	//***********************************************************************************************
@@ -67,6 +71,14 @@ int main(int argc, char** argv)
 	// WHILE parser isn't finished OR command queue isn't empty:
 	while(1)
 	{
+		#ifdef DEBUG
+		Printf("mem_sim: Top of operating loop. Status is as follows:\n");
+		Printf("Current Time: %llu\n", currentTime);
+		Printf("State of parser: %d\n", parser->lineState);
+		Printf("Size of command Queue: %d\n", commandQueue->size);
+		Printf("Printing command queue:\n");
+		print_queue(commandQueue, index, true);
+		#endif
 	// 	IF queue isn't full, pass parser current time and pointer to a inputCommand_t
 	//     and IF the we are not at the end of the file
 		if ((is_full(commandQueue) == false) && (parser_state != ENDOFFILE))
