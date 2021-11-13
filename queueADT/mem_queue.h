@@ -24,9 +24,9 @@ typedef enum _operation_e { READ, WRITE, IFETCH } operation_t;
 // define row from file separation
 typedef struct _cpu_command_s 
 {
-	long long			cpuCycle;
+	unsigned long long	cpuCycle;
 	operation_t 		command;
-	long long 			address;		// 33 bits
+	unsigned long long 	address;		// 33 bits
 	// Could make these smaller bit widths.
 	unsigned int 		rows; 			// 15 bits
 	unsigned int		upperColumns; 	//  8 bits
