@@ -77,6 +77,9 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 		// determine if queue is empty
 		if (queue->firstCommand == NULL)
 		{
+			#ifdef DEBUG
+				printf("Queue: Queue empty, setting first and last command pointers to new command\n");
+			#endif
 			// first & last command in queue
 			queue->firstCommand = queueItem;
 			queue->lastCommand = queueItem;
@@ -101,17 +104,24 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 
 		// increment queue size and return new queue item pointer
 		queue->size++;
+		#ifdef DEBUG
+			printf("Queue: Incrementing size. New size:%d\n", queue->size);
+		#endif
 		return queueItem;
 	}
 }	
 
 queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 {
+	#ifdef DEBUG
+		printf("Queue: Peaking at queue. State is as follows:\n");
+		printf("Size:%d\n", queue->size);
+	#endif
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
 
 	// go through queue and age each queue item
-	for (int x = 1; x < queue->size; x++)
+	for (int x = 1; x <= queue->size; x++)
 	{
 		// index found, return pointer to queueItem
 		if (x == index)
@@ -122,6 +132,10 @@ queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 		// index not found, incrememnt to next node
 		temp = temp->next;
 	}
+
+	#ifdef DEBUG
+		printf("Queue given index %d not in queue\n", index);
+	#endif
 	
 	// If index not found, return NULL pointer
 	return NULL;
@@ -147,7 +161,7 @@ void remove_queue_item(int index, queuePtr_t queue)
 			else
 			{
 				queue->lastCommand = temp->prev;
-				temp->prev->next = NULL;
+				//temp->prev->next = NULL;
 			}
 
 			// if prev isn't NULL, assign
@@ -158,14 +172,13 @@ void remove_queue_item(int index, queuePtr_t queue)
 			else
 			{
 				queue->firstCommand = temp->next;
-				temp->next->prev = NULL;
+				//temp->next->prev = NULL;
 			}
 
 			// once prev and next properly assigned, free temp
 			next = temp->next;
 			free(temp);
 			temp = next;
-			queue->size--;
 			// set flag for index removed
 			removed = true;
 		}
@@ -184,6 +197,7 @@ void remove_queue_item(int index, queuePtr_t queue)
 			}
 		}
 	}
+	queue->size--;
 }
 
 void age_queue(queuePtr_t queue, unsigned long long increment)
@@ -192,7 +206,7 @@ void age_queue(queuePtr_t queue, unsigned long long increment)
 	queueItemPtr_t temp = queue->firstCommand;
 
 	// go through queue and age each queue item
-	for (int x = 1; x < queue->size; x++)
+	for (int x = 1; x <= queue->size; x++)
 	{
 		temp->age += increment;
 
@@ -209,7 +223,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 	queueItemPtr_t temp = queue->firstCommand;
 	printf("\n\nQUEUE:\n");
 	// go through queue items and print out relevant information for debugging
-	for (int x = 1; x < queue->size; x++)
+	for (int x = 1; x <= queue->size; x++)
 	{
 		if (x == index || all) 
 		{
