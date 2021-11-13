@@ -42,10 +42,8 @@ int main(int argc, char** argv)
 
 	//Init parser
 	parserPtr_t parser = initParser(inputFile);
-	parser_state_t parser_state;
 	
 	//Initialize pointer to command line that is used as a go between the parser and the queue
-	inputCommandPtr_t currentCommandLine = NULL;
 	
 	//Init queue
 	commandQueue = create_queue();
@@ -72,9 +70,10 @@ int main(int argc, char** argv)
 	while(1)
 	{
 		#ifdef DEBUG
+		Printf("*************************************************************************\n");
 		Printf("mem_sim: Top of operating loop. Status is as follows:\n");
 		Printf("Current Time: %llu\n", currentTime);
-		Printf("State of parser: %d\n", getCommand(parser->lineState));
+		Printf("State of parser: %s\n", getParserState(parser->lineState));
 		Printf("Size of command Queue: %d\n", commandQueue->size);
 		if (!is_empty(commandQueue))
 		{
@@ -84,21 +83,22 @@ int main(int argc, char** argv)
 		#endif
 	// 	IF queue isn't full, pass parser current time and pointer to a inputCommand_t
 	//     and IF the we are not at the end of the file
-		if ((is_full(commandQueue) == false) && (parser_state != ENDOFFILE))
+		if ((is_full(commandQueue) == false) && (parser->lineState != ENDOFFILE))
 		{
+			inputCommandPtr_t currentCommandLine = NULL;
 	// 		IF that pointer returns non-NULL, add it to queue
-			parser_state = getLine(parser, currentCommandLine, currentTime);
+			currentCommandLine = getCommand(parser, currentTime);
 			#ifdef DEBUG
-				Printf("mem_sim:Checked parser for new command. Returned state was %d\n",getCommand(parser_state));
+				Printf("mem_sim: Checked parser for new command.\n");
 			#endif
-			if (parser_state == PARSE_ERROR)
+			if (currentCommandLine != NULL)
 			{
-				Fprintf(stderr, "Error in mem_sim: Parser unable to parse line.\n");
-				garbageCollection();
-				return -1;
-			}
-			else if (parser_state == VALID)
-			{
+				if (currentCommandLine == NULL)
+				{
+					Fprintf(stderr, "Error in mem_sim: Parser returned VALID with a NULL command line pointer\n");
+					garbageCollection();
+					return -1;
+				}
 				#ifdef DEBUG
 					Printf("mem_sim:Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
 				#endif
@@ -129,9 +129,9 @@ int main(int argc, char** argv)
 				i--;
 			}
 		}
-		if (is_empty(commandQueue) && parser_state == ENDOFFILE)
+		if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
 		{
-			Printf("At time %llu, last command removed from queue. Ending simulation.\n");
+			Printf("At time %llu, last command removed from queue. Ending simulation.\n", currentTime);
 			break;
 		}
 
@@ -149,16 +149,23 @@ int main(int argc, char** argv)
 			#endif
 		}
 		#ifdef DEBUG
-			Printf("mem_sim: Parser line state = %d\n", parser->lineState);
+			Printf("mem_sim: Parser line state = %s\n", getParserState(parser->lineState));
 		#endif
 		// Ask parser when next command arrives (this would be nice but not required by saturday)
-		if (parser->lineState != ENDOFFILE)
+		if (parser->lineState != ENDOFFILE && !is_full(commandQueue))
 		{
 			#ifdef DEBUG
 				Printf("mem_sim: Time of next line is %llu\n", parser->nextLineTime);
 			#endif
-			// Determine which of the previous two times is smaller
-			timeJump = (timeJump < parser->nextLineTime) ? timeJump : parser->nextLineTime;
+			if (parser->nextLineTime <= currentTime) //If we have a backlog of commands
+			{
+				timeJump = 1; //Time must advance by at least one
+			}
+			else
+			{
+				// Determine which of the previous two times is smaller
+				timeJump = (timeJump < (parser->nextLineTime-currentTime)) ? timeJump : (parser->nextLineTime-currentTime);
+			}
 		}
 		#ifdef DEBUG
 			Printf("mem_sim: Time jump will be %llu\n", timeJump);
@@ -221,7 +228,7 @@ void garbageCollection()
 void printRemoval(queueItemPtr_t item)
 {
 	Printf("\nAt time %llu, removed the following command inserted at %llu\n", currentTime, currentTime-item->age);
-	Printf("Trace Time:%llu, Command:%d, Addr:%llu\n",item->command->cpuCycle, item->command->command, item->command->address);
+	Printf("Trace Time:%llu, Command:%s, Addr:0x%llX\n",item->command->cpuCycle, getCommandString(item->command->command), item->command->address);
 }
 
 /**
