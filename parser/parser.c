@@ -23,11 +23,11 @@ Check if line is empty
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
-#include "mem_queue.h"
-#include "memoryController.h"
+#include "parser.h"
 
 void printCurrentLine(inputCommandPtr_t currentCommandLine);
 
+/*
 int main()
 {
 	// create and initiate queue
@@ -121,6 +121,7 @@ int main()
 
     return 0;
 }
+*/
 
 bool readLine(FILE *inputFile, inputCommandPtr_t currentLine)
 {
@@ -140,7 +141,8 @@ bool readLine(FILE *inputFile, inputCommandPtr_t currentLine)
 		
 		if (numFields != 3)
 		{
-			printf("Error, incorrect number of fields parsed from file.\n");
+			fprintf(stderr,"Error, incorrect number of fields parsed from file.\nThis line: ");
+			fprintf(stderr,"%s", inputLine);
 			exit(3);
 		}
 		nextLine.command		= (operation_t) commandInt;

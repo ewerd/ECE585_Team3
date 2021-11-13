@@ -11,7 +11,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include "mem_queue.h"
-#include "memoryController.h"
+#include "./../parser/parser.h"
 
 /*
 Preliminary queue for ECE 585 project
@@ -125,6 +125,9 @@ queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 		// index not found, incrememnt to next node
 		temp = temp->next;
 	}
+	
+	// If index not found, return NULL pointer
+	return NULL;
 }
 
 void remove_queue_item(int index, queuePtr_t queue)

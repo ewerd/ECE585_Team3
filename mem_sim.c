@@ -8,8 +8,9 @@
  * @authors	TODO
  */
 
-#include "./queue\ ADT/mem_queue.h"
-#include "./memory\ controller/memoryController.h"
+#include "./queueADT/mem_queue.h"
+#include "./parser/parser.h"
+#include <stdarg.h>
 
 /*
  * Helper function declarations.
