@@ -76,8 +76,11 @@ int main(int argc, char** argv)
 		Printf("Current Time: %llu\n", currentTime);
 		Printf("State of parser: %d\n", parser->lineState);
 		Printf("Size of command Queue: %d\n", commandQueue->size);
-		Printf("Printing command queue:\n");
-		print_queue(commandQueue, index, true);
+		if (!is_empty(commandQueue))
+		{
+			Printf("Printing command queue:\n");
+			print_queue(commandQueue, 1, true);
+		}
 		#endif
 	// 	IF queue isn't full, pass parser current time and pointer to a inputCommand_t
 	//     and IF the we are not at the end of the file
@@ -85,7 +88,9 @@ int main(int argc, char** argv)
 		{
 	// 		IF that pointer returns non-NULL, add it to queue
 			parser_state = getLine(parser, currentCommandLine, currentTime);
-			
+			#ifdef DEBUG
+				Printf("mem_sim:Checked parser for new command. Returned state was %d\n",parser_state);
+			#endif
 			if (parser_state == PARSE_ERROR)
 			{
 				Fprintf(stderr, "Error in mem_sim: Parser unable to parse line.\n");
@@ -94,6 +99,9 @@ int main(int argc, char** argv)
 			}
 			else if (parser_state == VALID)
 			{
+				#ifdef DEBUG
+					Printf("mem_sim:Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
+				#endif
 				// Current command line is ready for the current time to be added to the queue
 				if(insert_queue_item(commandQueue, currentCommandLine) == NULL)
 				{
@@ -106,10 +114,16 @@ int main(int argc, char** argv)
 		// FOR EACH command in the queue:
 		for (int i = 1; i <= commandQueue->size; i++)
 		{
+			#ifdef DEBUG
+				Printf("mem_sim: Scanning age of commands in queue\n");
+			#endif
 			queueItemPtr_t current = peakCommand(i);
-			// IF it's age is >= 100, remove it and print output message
+			// IF its age is >= 100, remove it and print output message
 			if (current->age >= 100)
 			{
+				#ifdef DEBUG
+					Printf("mem_sim: Found old entry at index %d with age %llu\n",i,current->age);
+				#endif
 				printRemoval(current);
 				remove_queue_item(i, commandQueue);
 				i--;
@@ -125,15 +139,30 @@ int main(int argc, char** argv)
 		// Check age of oldest entry in queue
 		if (!is_empty(commandQueue))
 		{
+			#ifdef DEBUG
+				Printf("mem_sim: Checking age of oldest command in queue\n");
+			#endif
 			queueItemPtr_t top = peakCommand(1);
 			timeJump = 100 - top->age;
+			#ifdef DEBUG
+				Printf("mem_sim: Age of oldest command is %llu, setting time jump to %llu\n", top->age, timeJump);
+			#endif
 		}
+		#ifdef DEBUG
+			Printf("mem_sim: Parser line state = %d\n", parser->lineState);
+		#endif
 		// Ask parser when next command arrives (this would be nice but not required by saturday)
 		if (parser->lineState != ENDOFFILE)
 		{
+			#ifdef DEBUG
+				Printf("mem_sim: Time of next line is %llu\n", parser->nextLineTime);
+			#endif
 			// Determine which of the previous two times is smaller
 			timeJump = (timeJump < parser->nextLineTime) ? timeJump : parser->nextLineTime;
 		}
+		#ifdef DEBUG
+			Printf("mem_sim: Time jump will be %llu\n", timeJump);
+		#endif
 		// Check if the time jump would take us past the limit of the simulation
 		if (currentTime + timeJump < currentTime)
 		{
@@ -142,6 +171,9 @@ int main(int argc, char** argv)
 		}
 		// Advance current time by that calculated time
 		currentTime += timeJump;
+		#ifdef DEBUG
+			Printf("mem_sim: Aging command queue\n");
+		#endif
 		// Age items in queue by time advanced
 		age_queue(commandQueue, timeJump);
 		// Loop back to start of WHILE loop
