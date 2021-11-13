@@ -26,7 +26,6 @@ Check if line is empty
 #include "parser.h"
 
 // Helper Functions:
-const char* getCommand(operation_t command);
 void printCurrentLine(inputCommandPtr_t currentCommandLine);
 
 
