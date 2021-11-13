@@ -165,3 +165,15 @@ const char* getCommand(operation_t command)
    }
    return "ERROR";
 }
+
+const char* getParserState(parser_state_t state)
+{
+	switch(state)
+	{
+		case PARSE_ERROR: return "PARSE_ERROR";
+		case FUTURE: return "FUTURE";
+		case VALID: return "VALID";
+		case READY: return "READY";
+		case ENDOFFILE: return "ENDOFFILE";
+	}
+}

@@ -98,5 +98,6 @@ parserPtr_t initParser(char* inputFile);
 parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime);
 
 const char* getCommand(operation_t command);
+const char* getParserState(parser_state_t state)
 
 #endif
