@@ -63,10 +63,9 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	// attempt to allocate queueItem
 	if (!(queueItem = malloc(sizeof(queueItem_t))))
 	{
-		if (DEBUG)
-		{
-			fprintf(stderr, "\ninsert_queue_item(): could not allocate data for queue item...\n");
-		}
+		#ifdef DEBUG
+		fprintf(stderr, "\ninsert_queue_item(): could not allocate data for queue item...\n");
+		#endif
 		return NULL;
 	}
 	else
