@@ -30,10 +30,9 @@ queuePtr_t create_queue()
 	// attempt allocation of queue
 	if (!(queue = malloc(sizeof(queue_t))))
 	{
-		if (DEBUG)
-		{
-			fprintf(stderr, "\ncreate_queue(): could not allocate space for queue...\n");
-		}
+		#ifdef DEBUG
+		fprintf(stderr, "\ncreate_queue(): could not allocate space for queue...\n");
+		#endif
 		return NULL;
 	}
 	else
@@ -50,10 +49,9 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	// check if queue is available
 	if (queue->size == 16)
 	{
-		if (DEBUG)
-		{
-			fprintf(stderr, "\ninsert_queue_item(): queue is full, cannot insert item...\n");
-		}
+		#ifdef DEBUG
+		fprintf(stderr, "\ninsert_queue_item(): queue is full, cannot insert item...\n");
+		#endif
 		return NULL;
 	}
 
