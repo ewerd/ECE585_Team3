@@ -63,10 +63,6 @@ int main(int argc, char** argv)
 	#endif
 
 	//Main operating loop
-	//***********************************************************************************************
-	//
-	// TODO FOR SATURDAY:
-	// WHILE parser isn't finished OR command queue isn't empty:
 	while(1)
 	{
 		#ifdef DEBUG
@@ -81,24 +77,20 @@ int main(int argc, char** argv)
 			print_queue(commandQueue, 1, true);
 		}
 		#endif
-	// 	IF queue isn't full, pass parser current time and pointer to a inputCommand_t
-	//     and IF the we are not at the end of the file
+		
+		// If the command queue isn't full and the parser hasn't reached EOF
 		if ((is_full(commandQueue) == false) && (parser->lineState != ENDOFFILE))
 		{
+			//Ask parser for next command at the current time
 			inputCommandPtr_t currentCommandLine = NULL;
-	// 		IF that pointer returns non-NULL, add it to queue
 			currentCommandLine = getCommand(parser, currentTime);
 			#ifdef DEBUG
 				Printf("mem_sim: Checked parser for new command.\n");
 			#endif
+
+			//If the pointer isn't NULL, add the command to the command queue
 			if (currentCommandLine != NULL)
 			{
-				if (currentCommandLine == NULL)
-				{
-					Fprintf(stderr, "Error in mem_sim: Parser returned VALID with a NULL command line pointer\n");
-					garbageCollection();
-					return -1;
-				}
 				#ifdef DEBUG
 					Printf("mem_sim:Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
 				#endif
@@ -111,6 +103,9 @@ int main(int argc, char** argv)
 				}
 			}
 		}
+
+		//TODO this will turn into a scan to find commands that have waited tCL and tBURST since their read/write
+		//     was issued
 		// FOR EACH command in the queue:
 		for (int i = 1; i <= commandQueue->size; i++)
 		{
@@ -129,6 +124,8 @@ int main(int argc, char** argv)
 				i--;
 			}
 		}
+
+		// If the command queue is empty and the parser is at EOF, then the simulation is done
 		if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
 		{
 			Printf("At time %llu, last command removed from queue. Ending simulation.\n", currentTime);
@@ -189,7 +186,7 @@ int main(int argc, char** argv)
 
 	garbageCollection();
 	return 0;
-	//
+	
 	//***********************************************************************************************
 
 	// Everything below here are notes for final implementation
