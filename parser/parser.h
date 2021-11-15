@@ -62,8 +62,27 @@ typedef struct _parser_s
 */
 parserPtr_t initParser(char* inputFile);
 
+/**
+ * @fn		getCommand
+ * @brief	Retrieves an inputCommand from the parser
+ *
+ * @detail	The parser compares the current time to the time of parsed command. If the current time is equal
+ *		or later than the parsed command, then a pointer to the parsed command is returned.
+ * @param	parser		The parser with the parsed command
+ * @param	currentTime	The current time
+ * @returns	A pointer to the next command if it occurs at or before the current time. NULL otherwise
+ */
 inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime);
 
+/**
+ * @fn		prepCommand
+ * @brief	Reads and parsers a line from the input file
+ *
+ * @detail	Parses a line from the input file and creates an inputCommand struct that the parser stores.
+ *		Lines that fail to parse correctly get sent to stderr and the parser moves on to the next
+ *		line.
+ * @param	parser	The parser that has the input file and will store the inputCommand
+ */
 void prepCommand(parserPtr_t parser);
 
 /**
