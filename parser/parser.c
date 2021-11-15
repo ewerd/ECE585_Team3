@@ -52,7 +52,7 @@ parserPtr_t initParser(char* inputFile)
 		
 		// Grab first line and update state accordingly
 		//getLine(newParser, newParser->nextLine, 0);
-		while (newParser->lineState == PARSE_ERROR)
+		while (newParser->lineState == PARSE_ERROR) // Keep parsing until you get a good line or EOF
 		{
 			prepCommand(newParser);
 		}
@@ -122,7 +122,7 @@ void prepCommand(parserPtr_t parser)
 	
 	if (numFields != 3)
 	{
-		fprintf(stderr,"Error, incorrect number of fields parsed from file.\nThis line: ");
+		fprintf(stderr,"Error in Parser.prepCommand(): incorrect number of fields parsed from file.\nThis line: ");
 		fprintf(stderr,"%s", inputLine);
 		parser->lineState = PARSE_ERROR;
 		parser->nextLine = NULL;
@@ -132,7 +132,7 @@ void prepCommand(parserPtr_t parser)
 	// Allocate memory for next line
 	if ((parser->nextLine = malloc(sizeof(inputCommand_t))) == NULL)
 	{
-		fprintf(stderr, "\nError getLine: could not allocate space for new command struct.\n");
+		fprintf(stderr, "\nError in Parser.prepCommand(): could not allocate space for new command struct.\n");
 		exit(EXIT_FAILURE);
 	}
 
