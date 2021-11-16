@@ -6,8 +6,8 @@ CC = gcc
 CFLAGS = -Wall -std=c99 -g
 OBJS = parser.o mem_queue.o mem_sim.o
 LDFLAGS = -lm
-SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c
-HDRS = parser/parser.h queueADT/mem_queue.h
+SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c wrappers.c
+HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h
 EXE  = sim.exe
 
 sim : $(OBJS)
