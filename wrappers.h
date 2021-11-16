@@ -6,10 +6,6 @@
 #ifndef WRAPPERS_H_
 #define	WRAPPERS_H_
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 /**
  * @fn		Printf
  * @brief	Wrapper function for printf to catch errors

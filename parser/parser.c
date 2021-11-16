@@ -35,7 +35,7 @@ parserPtr_t initParser(char* inputFile)
 	parserPtr_t newParser;
 	if ((newParser = malloc(sizeof(parser_t))) == NULL)
 	{
-		fprintf(stderr, "\nError initParser: could not allocate space for parser.\n");
+		Fprintf(stderr, "\nError initParser: could not allocate space for parser.\n");
 		exit(EXIT_FAILURE);
 	}
 	else
@@ -44,7 +44,7 @@ parserPtr_t initParser(char* inputFile)
 		newParser->filename = fopen(inputFile, "r");
 		if (inputFile == NULL)
 		{
-			fprintf(stderr, "\nError initParser: could not open file named %s\n", inputFile);
+			Fprintf(stderr, "\nError initParser: could not open file named %s\n", inputFile);
 			exit(EXIT_FAILURE);
 		}
 		
@@ -58,7 +58,7 @@ parserPtr_t initParser(char* inputFile)
 		}
 		
 		#ifdef DEBUG
-			printf("parser: Initialized new parser. Parser state:%s\n",getParserState(newParser->lineState));
+			Printf("parser: Initialized new parser. Parser state:%s\n",getParserState(newParser->lineState));
 		#endif
 
 		return newParser; // Return the new parser ADT
@@ -72,12 +72,12 @@ inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
 		return NULL;
 
 		#ifdef DEBUG
-			printf("Parser: Next command at time %llu. Current time %llu\n", parser->nextLine->cpuCycle, currentTime);
+			Printf("Parser: Next command at time %llu. Current time %llu\n", parser->nextLine->cpuCycle, currentTime);
 		#endif
 	if (parser->nextLine->cpuCycle <= currentTime)
 	{
 		#ifdef DEBUG
-			printf("Parser: Returning command. Then parsing new command.\n");
+			Printf("Parser: Returning command. Then parsing new command.\n");
 		#endif
 		inputCommandPtr_t newCommand = parser->nextLine;
 		do{
@@ -86,7 +86,7 @@ inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
 		return newCommand;
 	}
 	#ifdef DEBUG
-		printf("Parser: Holding on to command and returning NULL.\n");
+		Printf("Parser: Holding on to command and returning NULL.\n");
 	#endif
 	return NULL;
 }
@@ -94,14 +94,14 @@ inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
 void prepCommand(parserPtr_t parser)
 {
 	#ifdef DEBUG
-		printf("Parser: Parsing new line\n");
+		Printf("Parser: Parsing new line\n");
 	#endif
 	char inputLine[128];
 		
 	if (fgets(inputLine, 128, parser->filename) == NULL)
 	{ // Returns ENDOFFILE if it reaches the end of the file
 		#ifdef DEBUG
-			printf("Parser: Encountered end of file.\n");
+			Printf("Parser: Encountered end of file.\n");
 		#endif
 		parser->lineState = ENDOFFILE;
 		parser->nextLine = NULL;
@@ -109,7 +109,7 @@ void prepCommand(parserPtr_t parser)
 	}
 
 	#ifdef DEBUG
-		printf("Parser read in:%s\n",inputLine);
+		Printf("Parser read in:%s\n",inputLine);
 	#endif
 	
 	// Not end of file
@@ -122,8 +122,8 @@ void prepCommand(parserPtr_t parser)
 	
 	if (numFields != 3)
 	{
-		fprintf(stderr,"Error in Parser.prepCommand(): incorrect number of fields parsed from file.\nThis line: ");
-		fprintf(stderr,"%s", inputLine);
+		Fprintf(stderr,"Error in Parser.prepCommand(): incorrect number of fields parsed from file.\nThis line: ");
+		Fprintf(stderr,"%s", inputLine);
 		parser->lineState = PARSE_ERROR;
 		parser->nextLine = NULL;
 		return;
@@ -132,7 +132,7 @@ void prepCommand(parserPtr_t parser)
 	// Allocate memory for next line
 	if ((parser->nextLine = malloc(sizeof(inputCommand_t))) == NULL)
 	{
-		fprintf(stderr, "\nError in Parser.prepCommand(): could not allocate space for new command struct.\n");
+		Fprintf(stderr, "\nError in Parser.prepCommand(): could not allocate space for new command struct.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -193,7 +193,7 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 			// Allocate memory for next line
 			if ((nextCommand = malloc(sizeof(inputCommand_t))) == NULL)
 			{
-				fprintf(stderr, "\nError getLine: could not allocate space for nextCommand.\n");
+				Fprintf(stderr, "\nError getLine: could not allocate space for nextCommand.\n");
 				exit(EXIT_FAILURE);
 			}
 			
@@ -203,8 +203,8 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 			
 			if (numFields != 3)
 			{
-				fprintf(stderr,"Error, incorrect number of fields parsed from file.\nThis line: ");
-				fprintf(stderr,"%s", inputLine);
+				Fprintf(stderr,"Error, incorrect number of fields parsed from file.\nThis line: ");
+				Fprintf(stderr,"%s", inputLine);
 				return (parser_state_t) PARSE_ERROR;
 			}
 			
@@ -240,13 +240,13 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 	}
 	
 	// If you've made it this far, something has gone wrong
-	fprintf(stderr, "Error: Reached end of getLine function. Should not be possible.\n");
+	Fprintf(stderr, "Error: Reached end of getLine function. Should not be possible.\n");
 	return (parser_state_t) PARSE_ERROR;
 }
 
 void printCurrentLine(inputCommandPtr_t currentCommandLine)
 {
-	printf("PARSER, Completed Parsing Line: Time = %10llu, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommandString(currentCommandLine->command), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
+	Printf("PARSER, Completed Parsing Line: Time = %10llu, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommandString(currentCommandLine->command), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
 }
 
 const char* getCommandString(operation_t command)

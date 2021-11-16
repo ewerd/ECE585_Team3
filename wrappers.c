@@ -3,8 +3,9 @@
  * @brief	Simple wrapper functions to catch errors from system calls
  */
 
-#include "wrappers.h"
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void Printf(char* format, ...)
 {

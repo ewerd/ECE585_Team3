@@ -10,6 +10,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include "../wrappers.h"
 #include "mem_queue.h"
 #include "./../parser/parser.h"
 
@@ -31,7 +32,7 @@ queuePtr_t create_queue()
 	if (!(queue = malloc(sizeof(queue_t))))
 	{
 		#ifdef DEBUG
-		fprintf(stderr, "\ncreate_queue(): could not allocate space for queue...\n");
+		Fprintf(stderr, "\ncreate_queue(): could not allocate space for queue...\n");
 		#endif
 		return NULL;
 	}
@@ -49,7 +50,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	// check if queue is available
 	if (queue->size == 16)
 	{
-		fprintf(stderr, "\nError in mem_queue.insert_queue_item(): queue is full, cannot insert item...\n");
+		Fprintf(stderr, "\nError in mem_queue.insert_queue_item(): queue is full, cannot insert item...\n");
 		return NULL;
 	}
 
@@ -59,7 +60,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	// attempt to allocate queueItem
 	if (!(queueItem = malloc(sizeof(queueItem_t))))
 	{
-		fprintf(stderr, "\nError in mem_queue.insert_queue_item(): could not allocate data for queue item...\n");
+		Fprintf(stderr, "\nError in mem_queue.insert_queue_item(): could not allocate data for queue item...\n");
 		return NULL;
 	}
 	else
@@ -74,7 +75,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 		if (queue->firstCommand == NULL)
 		{
 			#ifdef DEBUG
-				printf("Queue: Queue empty, setting first and last command pointers to new command\n");
+				Printf("Queue: Queue empty, setting first and last command pointers to new command\n");
 			#endif
 			// first & last command in queue
 			queue->firstCommand = queueItem;
@@ -86,7 +87,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 		else
 		{
 			#ifdef DEBUG
-				printf("Queue: inserting into back of queue\n");
+				Printf("Queue: inserting into back of queue\n");
 			#endif
 			// insert into back of the queue
 			// last command of queue points towards new last command
@@ -104,7 +105,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 		// increment queue size and return new queue item pointer
 		queue->size++;
 		#ifdef DEBUG
-			printf("Queue: Incrementing size. New size:%d\n", queue->size);
+			Printf("Queue: Incrementing size. New size:%d\n", queue->size);
 		#endif
 		return queueItem;
 	}
@@ -113,7 +114,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 {
 	#ifdef DEBUG
-		printf("Queue: Peaking at queue index %d. Size is %d\n", index, queue->size);
+		Printf("Queue: Peaking at queue index %d. Size is %d\n", index, queue->size);
 	#endif
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
@@ -132,7 +133,7 @@ queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 	}
 
 	#ifdef DEBUG
-		printf("Queue: Index %d is not in queue\n", index);
+		Printf("Queue: Index %d is not in queue\n", index);
 	#endif
 	
 	// If index not found, return NULL pointer
@@ -222,7 +223,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 {
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
-	printf("\n\nQUEUE:\n");
+	Printf("\n\nQUEUE:\n");
 	// go through queue items and print out relevant information for debugging
 	for (int x = 1; x <= queue->size; x++)
 	{
@@ -231,7 +232,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 			// shortener variable for readability
 			inputCommandPtr_t cmd = temp->command;
 
-			printf("Item: %2d\t, Time = %10llu, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
+			Printf("Item: %2d\t, Time = %10llu, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
 
 			if (temp->next != NULL)
 			{
@@ -239,7 +240,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 			}
 		}
 	}
-	printf("\n\n");
+	Printf("\n\n");
 }
 
 bool is_empty(queuePtr_t queue)
