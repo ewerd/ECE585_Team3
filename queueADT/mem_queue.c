@@ -49,9 +49,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	// check if queue is available
 	if (queue->size == 16)
 	{
-		#ifdef DEBUG
-		fprintf(stderr, "\ninsert_queue_item(): queue is full, cannot insert item...\n");
-		#endif
+		fprintf(stderr, "\nError in mem_queue.insert_queue_item(): queue is full, cannot insert item...\n");
 		return NULL;
 	}
 
@@ -61,9 +59,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	// attempt to allocate queueItem
 	if (!(queueItem = malloc(sizeof(queueItem_t))))
 	{
-		#ifdef DEBUG
-		fprintf(stderr, "\ninsert_queue_item(): could not allocate data for queue item...\n");
-		#endif
+		fprintf(stderr, "\nError in mem_queue.insert_queue_item(): could not allocate data for queue item...\n");
 		return NULL;
 	}
 	else
@@ -89,6 +85,9 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 		}
 		else
 		{
+			#ifdef DEBUG
+				printf("Queue: inserting into back of queue\n");
+			#endif
 			// insert into back of the queue
 			// last command of queue points towards new last command
 			queue->lastCommand->next = queueItem;
@@ -114,8 +113,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 {
 	#ifdef DEBUG
-		printf("Queue: Peaking at queue. State is as follows:\n");
-		printf("Size:%d\n", queue->size);
+		printf("Queue: Peaking at queue index %d. Size is %d\n", index, queue->size);
 	#endif
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
@@ -134,7 +132,7 @@ queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 	}
 
 	#ifdef DEBUG
-		printf("Queue given index %d not in queue\n", index);
+		printf("Queue: Index %d is not in queue\n", index);
 	#endif
 	
 	// If index not found, return NULL pointer
@@ -197,7 +195,10 @@ void remove_queue_item(int index, queuePtr_t queue)
 			}
 		}
 	}
-	queue->size--;
+	if (removed)
+	{
+		queue->size--;
+	}
 }
 
 void age_queue(queuePtr_t queue, unsigned long long increment)
@@ -230,7 +231,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 			// shortener variable for readability
 			inputCommandPtr_t cmd = temp->command;
 
-			printf("Item: %2d\t, Time = %10lld, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
+			printf("Item: %2d\t, Time = %10llu, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
 
 			if (temp->next != NULL)
 			{
