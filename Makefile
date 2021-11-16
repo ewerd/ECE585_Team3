@@ -11,7 +11,7 @@ HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h
 EXE  = sim.exe
 
 sim : $(OBJS)
-	$(CC) $(LDFLAGS) -o $(EXE) $(OBJS)
+	$(CC) $(LDFLAGS) -o $(EXE) $(SRC)
 
 mem_sim.o : mem_sim.c
 	$(CC) $(CFLAGS) -c mem_sim.c
