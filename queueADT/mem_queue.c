@@ -13,6 +13,9 @@
 #include "../wrappers.h"
 #include "mem_queue.h"
 
+// Private helper functions
+static queueItemPtr_t newNode(void* item, unsigned long long age);
+
 // FUNCTION DEFINITIONS:
 queuePtr_t create_queue(unsigned maxSize)
 {
@@ -36,6 +39,24 @@ queuePtr_t create_queue(unsigned maxSize)
 	}
 }
 
+/**
+ * @fn		newNode
+ * @brief	Helper function to allocate and initialize a new list node
+ *
+ * @param	item	Pointer to the item being stored in the node
+ * @param	age	Age of the item in the node
+ */
+static queueItemPtr_t newNode(void* item, unsigned long long age)
+{
+	queueItemPtr_t queueItem = Malloc(sizeof(queueItem_t));
+	// successful allocation; insert command into new queueItem
+	queueItem->item = item;
+	queueItem->prev = NULL;
+	queueItem->next = NULL;
+	queueItem->age = age;
+	return queueItem;
+}
+
 queueItemPtr_t insert_queue_item(queuePtr_t queue, void *item)
 {
 	// check if queue is available
@@ -46,61 +67,129 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, void *item)
 	}
 
 	// variables:
-	queueItemPtr_t queueItem;
+	queueItemPtr_t queueItem = newNode(item, 0);
 
-	// attempt to allocate queueItem
-	if (!(queueItem = malloc(sizeof(queueItem_t))))
+	// determine if queue is empty
+	if (queue->firstCommand == NULL)
 	{
-		Fprintf(stderr, "\nError in mem_queue.insert_queue_item(): could not allocate data for queue item...\n");
-		return NULL;
+		#ifdef DEBUG
+			Printf("Queue: Queue empty, setting first and last command pointers to new command\n");
+		#endif
+		// first & last command in queue
+		queue->firstCommand = queueItem;
+		queue->lastCommand = queueItem;
+
+		// indexes labeled 1 to 16 -> eldest to newest (changeable if desired)
+		queueItem->index = 1; 
 	}
 	else
 	{
-		// successful allocation; insert command into new queueItem
-		queueItem->item = item;
-		queueItem->prev = NULL;
-		queueItem->next = NULL;
-		queueItem->age = 0;
-
-		// determine if queue is empty
-		if (queue->firstCommand == NULL)
-		{
-			#ifdef DEBUG
-				Printf("Queue: Queue empty, setting first and last command pointers to new command\n");
-			#endif
-			// first & last command in queue
-			queue->firstCommand = queueItem;
-			queue->lastCommand = queueItem;
-
-			// indexes labeled 1 to 16 -> eldest to newest (changeable if desired)
-			queueItem->index = 1; 
-		}
-		else
-		{
-			#ifdef DEBUG
-				Printf("Queue: inserting into back of queue\n");
-			#endif
-			// insert into back of the queue
-			// last command of queue points towards new last command
-			queue->lastCommand->next = queueItem;
-
-			// new command points to previously last command of queue and indexed 
-			queueItem->prev = queue->lastCommand;
-			queueItem->index = queue->lastCommand->index + 1;
-
-			// set new queue item to back of queue (bigger index), and queue points next NULL because now back of queue
-			queue->lastCommand = queueItem;
-			queueItem->next = NULL;
-		}
-
-		// increment queue size and return new queue item pointer
-		queue->size++;
 		#ifdef DEBUG
-			Printf("Queue: Incrementing size. New size:%d\n", queue->size);
+			Printf("Queue: inserting into back of queue\n");
 		#endif
-		return queueItem;
+		// insert into back of the queue
+		// last command of queue points towards new last command
+		queue->lastCommand->next = queueItem;
+
+		// new command points to previously last command of queue and indexed 
+		queueItem->prev = queue->lastCommand;
+		queueItem->index = queue->lastCommand->index + 1;
+
+		// set new queue item to back of queue (bigger index), and queue points next NULL because now back of queue
+		queue->lastCommand = queueItem;
+		queueItem->next = NULL;
 	}
-}	
+
+	// increment queue size and return new queue item pointer
+	queue->size++;
+	#ifdef DEBUG
+		Printf("Queue: Incrementing size. New size:%d\n", queue->size);
+	#endif
+	return queueItem;
+}
+
+void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue)
+{
+	#ifdef DEBUG
+		Printf("Queue:Inserting item with age %llu into list with size %u\n",age,queue->size);
+	#endif
+	//If queue is full, don't insert and return NULL
+	if (queue->size == queue->maxSize)
+	{
+		#ifdef DEBUG
+			Printf("Queue:List is full with %u items. Item will not be inserted.\n", queue->maxSize);
+		#endif
+		return NULL;
+	}
+
+	//Create new queue item
+	queueItemPtr_t newItem = newNode(item, age);
+
+	//If queue empty:
+	if (queue->firstCommand == NULL)
+	{
+		#ifdef DEBUG
+			Printf("Queue:List is empty. Inserting item\n");
+		#endif
+		queue->firstCommand = queue->lastCommand = newItem;
+		return item;
+	}
+	
+	#ifdef DEBUG
+		Printf("Queue:New size after insertion will be %u\n",queue->size+1);
+	#endif
+	queue->size++;
+	bool inserted = false;
+
+	for (queueItemPtr_t current = queue->firstCommand; current != NULL; current = current->next)
+	{
+		#ifdef DEBUG
+			Printf("Queue:Comparing to item with age %llu\n", current->age);
+		#endif
+		if (newItem->age < current->age && !inserted)
+		{
+			#ifdef DEBUG
+				Printf("Queue:Inserting item with age %llu here at index %u.\n",newItem->age,current->index);
+			#endif
+			if (current->prev != NULL)
+			{
+				current->prev->next = newItem;
+			}
+			else
+			{
+				queue->firstCommand = newItem;
+			}
+			newItem->prev = current->prev;
+			newItem->next = current;
+			newItem->index = current->index;
+			current->prev = newItem;
+			inserted = true;
+		}
+
+		if (inserted)
+		{
+			#ifdef DEBUG
+				Printf("Queue:Moving item from index %u to %u.\n", current->index, current->index+1);
+			#endif
+			current->index++;
+		}
+	}
+
+	if (inserted)
+	{
+		return item;
+	}
+
+	#ifdef DEBUG
+		Printf("Queue:New age not < any age in queue. Inserting in back at index %u.\n",queue->lastCommand->index+1);
+	#endif
+
+	queue->lastCommand->next = newItem;
+	newItem->prev = queue->lastCommand;
+	newItem->index = queue->lastCommand->index+1;
+	queue->lastCommand = newItem;
+	return item;
+}
 
 void* peak_queue_item(int index, queuePtr_t queue)
 {

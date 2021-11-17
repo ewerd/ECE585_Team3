@@ -18,7 +18,7 @@
 
 typedef struct queueItem_s 
 {
-	int index;
+	unsigned index;
 	unsigned long long	age;			// how long the queue item has been in the queue
 	struct queueItem_s	*prev;			// previous item in Queue
 	struct queueItem_s	*next;			// next item in Queue
@@ -64,6 +64,17 @@ queuePtr_t create_queue(unsigned maxSize);
 * RETURNS:			queueItemPtr_T (pointer to newly inserted queue item)
 */
 queueItemPtr_t insert_queue_item(queuePtr_t queue, void* item);
+
+/**
+ * @fn		sorted_insert_queue
+ * @brief	Inserts a new item into the list sorted on age
+ *
+ * @param	item	Pointer to the new item
+ * @param	age	Age of the new item
+ * @param	queue	Pointer to the target queue
+ * @return	Pointer to the new item after insertion. NULL otherwise.
+ */
+void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue);
 
 /**
 * FUNCTION:			peak_queue_item
