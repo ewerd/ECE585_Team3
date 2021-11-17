@@ -40,20 +40,25 @@ int main(int argc, char** argv)
 	char* inputFile = parseArgs(argc,argv);
 	if (inputFile == NULL)
 	{
-		Printf("Error in mem_sim: Could not find unique file name in command line arguments\n");
+		Fprintf(stderr, "Error in mem_sim: Could not find unique file name in command line arguments\n");
 		return -1;
 	}
 
 	//Init parser
 	parserPtr_t parser = initParser(inputFile);
-	
+	if (parser == NULL)
+	{
+		Fprintf(stderr, "Error in mem_sim:Failed to initialize parser.\n");
+		return -1;
+	}
+
 	//Initialize pointer to command line that is used as a go between the parser and the queue
 	
 	//Init queue
 	commandQueue = create_queue(CMD_QUEUE_SIZE);
 	if (commandQueue == NULL)
 	{
-		Printf("Error in mem_sim: Could not create command queue.\n");
+		Fprintf(stderr, "Error in mem_sim: Could not create command queue.\n");
 		return -1;
 	}
 
