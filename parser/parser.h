@@ -99,8 +99,9 @@ inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
  *		Lines that fail to parse correctly get sent to stderr and the parser moves on to the next
  *		line.
  * @param	parser	The parser that has the input file and will store the inputCommand
+ * @returns	0 if a line is parsed successfully. -1 otherwise.
  */
-void prepCommand(parserPtr_t parser);
+int prepCommand(parserPtr_t parser);
 
 /**
 * FUNCTION:			getLine

@@ -34,37 +34,31 @@ parserPtr_t initParser(char* inputFile)
 {
 	// Allocate space for the parser and initialize the state, open file, and complete first read.
 	parserPtr_t newParser;
-	if ((newParser = malloc(sizeof(parser_t))) == NULL)
+	newParser = Malloc(sizeof(parser_t));
+		
+	// Open file pointer
+	newParser->filename = fopen(inputFile, "r");
+	if (inputFile == NULL)
 	{
-		Fprintf(stderr, "\nError initParser: could not allocate space for parser.\n");
+		Fprintf(stderr, "\nError initParser: could not open file named %s\n", inputFile);
 		exit(EXIT_FAILURE);
 	}
-	else
+	
+	newParser->lineState = PARSE_ERROR;
+	
+	// Grab first line and update state accordingly
+	if (prepCommand(newParser) == -1)
 	{
-		// Open file pointer
-		newParser->filename = fopen(inputFile, "r");
-		if (inputFile == NULL)
-		{
-			Fprintf(stderr, "\nError initParser: could not open file named %s\n", inputFile);
-			exit(EXIT_FAILURE);
-		}
-		
-		newParser->lineState = PARSE_ERROR;
-		
-		// Grab first line and update state accordingly
-		//getLine(newParser, newParser->nextLine, 0);
-		while (newParser->lineState == PARSE_ERROR) // Keep parsing until you get a good line or EOF
-		{
-			prepCommand(newParser);
-		}
-		
-		#ifdef DEBUG
-			Printf("parser: Initialized new parser. Parser state:%s\n",getParserState(newParser->lineState));
-		#endif
-
-		return newParser; // Return the new parser ADT
+		fclose(inputFile);
+		free(newParser);
+		return NULL;
 	}
+	
+	#ifdef DEBUG
+		Printf("parser: Initialized new parser. Parser state:%s\n",getParserState(newParser->lineState));
+	#endif
 
+	return newParser; // Return the new parser ADT
 }
 
 inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
@@ -81,9 +75,11 @@ inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
 			Printf("Parser: Returning command. Then parsing new command.\n");
 		#endif
 		inputCommandPtr_t newCommand = parser->nextLine;
-		do{
-			prepCommand(parser);
-		}while (parser->lineState == PARSE_ERROR);
+		if(prepCommand(parser) != 0)
+		{
+			Fprintf(stderr, "Error in Parser: Failed to parse next line\n");
+			exit(EXIT_FAILURE);
+		}
 		return newCommand;
 	}
 	#ifdef DEBUG
@@ -92,7 +88,7 @@ inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)
 	return NULL;
 }
 
-void prepCommand(parserPtr_t parser)
+int prepCommand(parserPtr_t parser)
 {
 	#ifdef DEBUG
 		Printf("Parser: Parsing new line\n");
@@ -106,7 +102,7 @@ void prepCommand(parserPtr_t parser)
 		#endif
 		parser->lineState = ENDOFFILE;
 		parser->nextLine = NULL;
-		return;
+		return 0;
 	}
 
 	#ifdef DEBUG
@@ -125,17 +121,11 @@ void prepCommand(parserPtr_t parser)
 	{
 		Fprintf(stderr,"Error in Parser.prepCommand(): incorrect number of fields parsed from file.\nThis line: ");
 		Fprintf(stderr,"%s", inputLine);
-		parser->lineState = PARSE_ERROR;
-		parser->nextLine = NULL;
-		return;
+		return -1;
 	}
 
 	// Allocate memory for next line
-	if ((parser->nextLine = malloc(sizeof(inputCommand_t))) == NULL)
-	{
-		Fprintf(stderr, "\nError in Parser.prepCommand(): could not allocate space for new command struct.\n");
-		exit(EXIT_FAILURE);
-	}
+	parser->nextLine = Malloc(sizeof(inputCommand_t))
 
 	parser->nextLine->cpuCycle = time;
 	parser->nextLine->command = (operation_t)commandInt;
@@ -192,12 +182,7 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 			inputCommandPtr_t nextCommand;
 			
 			// Allocate memory for next line
-			if ((nextCommand = malloc(sizeof(inputCommand_t))) == NULL)
-			{
-				Fprintf(stderr, "\nError getLine: could not allocate space for nextCommand.\n");
-				exit(EXIT_FAILURE);
-			}
-			
+			nextCommand = Malloc(sizeof(inputCommand_t));	
 			
 			numFields = sscanf(inputLine, " %llu %d %llx\n", &(nextCommand->cpuCycle), &commandInt, &(nextCommand->address));
 			
