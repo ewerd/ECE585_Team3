@@ -12,28 +12,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define SIZEQUEUE 16
+#include <limits.h>
 
 // STRUCTS AND GLOBALS
-
-// Define Operation Enum
-typedef enum _operation_e { READ, WRITE, IFETCH } operation_t;
-
-// define row from file separation
-typedef struct _cpu_command_s 
-{
-	unsigned long long	cpuCycle;
-	operation_t 		command;
-	unsigned long long 	address;		// 33 bits
-	// Could make these smaller bit widths.
-	unsigned int 		rows; 			// 15 bits
-	unsigned int		upperColumns; 	//  8 bits
-	unsigned int		banks; 			//  2 bits
-	unsigned int		bankGroups; 	//  2 bits
-	unsigned int		lowerColumns; 	//  3 bits
-	unsigned int		byteSelect; 	//  3 bits
-} inputCommand_t, *inputCommandPtr_t;
 
 typedef struct queueItem_s 
 {
@@ -41,7 +22,7 @@ typedef struct queueItem_s
 	unsigned long long	age;			// how long the queue item has been in the queue
 	struct queueItem_s	*prev;			// previous item in Queue
 	struct queueItem_s	*next;			// next item in Queue
-	inputCommandPtr_t	command;		// pointer to row item struct w/ address and cpu cycle time
+	void			*item;			// pointer to item data
 
 } queueItem_t, *queueItemPtr_t;
 
@@ -49,7 +30,8 @@ typedef struct queueItem_s
 // STRUCTURE: queue is oriented so that 16 represents most recent element (back of queue) and 1 represents oldest element (front of queue)
 typedef struct queue_s
 {
-	int					size;			// amount of items in queue
+	unsigned		size;		// amount of items in queue
+	unsigned		maxSize;	// Maximum size of queue
 	queueItemPtr_t		firstCommand;	// pointer to first item in queue
 	queueItemPtr_t		lastCommand;	// pointer to last item in queue
 
@@ -65,11 +47,11 @@ typedef struct queue_s
 *					requests. This should only be called once at the beginning of a 
 *					given simulation.
 *
-* PARAMS:			none
+* PARAMS:			maxSize	Maximum size of the queue
 *
 * RETURNS:			queuePtr_t (pointer to queue item ADT)
 */
-queuePtr_t create_queue();
+queuePtr_t create_queue(unsigned maxSize);
 
 /**
 * FUNCTION:			insert_queue_item
@@ -77,23 +59,33 @@ queuePtr_t create_queue();
 * INFO:				Inserts a provided queue item to the back of a provided queuePtr_t (queue pointer).
 *					
 * PARAMS:			queuePtr_t queue (queue to be inserted into)
-*					inputCommandPtr_t item (item to be inserted)
+*				item	A void pointer to the data to be added to the queue
 *
 * RETURNS:			queueItemPtr_T (pointer to newly inserted queue item)
 */
-queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command);
+queueItemPtr_t insert_queue_item(queuePtr_t queue, void* item);
 
 /**
 * FUNCTION:			peak_queue_item
 *
 * INFO:				Peaks at a provided queue item (queue pointer).
 *					
-* PARAMS:			queuePtr_t queue (queue to be inserted into)
-*					queuePtr_t index (index of desired item)
+* PARAMS:			queuePtr_t queue (queue to be examined)
+*				index	(index of desired item)
 *
-* RETURNS:			queueItemPtr_T (pointer to peaked at queue item)
+* RETURNS:			Pointer to peaked at item
 */
-queueItemPtr_t peak_queue_item(int index, queuePtr_t queue);
+void *peak_queue_item(int index, queuePtr_t queue);
+
+/**
+ * @fn		getAge
+ * @brief	Get the age of the item at a given index
+ *
+ * @param	queue	Target queue
+ * @param	index	Index of node in queue
+ * @returns	The age of the item in the node. ULLONG_MAX if the index is out of range
+ */
+unsigned long long getAge(unsigned index, queuePtr_t queue);
 
 /**
 * FUNCTION:			remove_queue_item
@@ -103,9 +95,9 @@ queueItemPtr_t peak_queue_item(int index, queuePtr_t queue);
 * PARAMS:			int index (integer index of queue item to be removed)
 *					queuePtr_t queue (queue to be removed from)
 *
-* RETURNS:			TBD (void for now)
+* RETURNS:			Pointer to the item removed
 */
-void remove_queue_item(int index, queuePtr_t queue);
+void* remove_queue_item(int index, queuePtr_t queue);
 
 /**
 * FUNCTION:			age_queue

@@ -10,7 +10,24 @@ MemoryController.h
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
-#include "./../queueADT/mem_queue.h"
+
+// Define Operation Enum
+typedef enum _operation_e { READ, WRITE, IFETCH } operation_t;
+
+// Struct for memory access command from trace file
+typedef struct _cpu_command_s 
+{
+	unsigned long long	cpuCycle;
+	operation_t 		command;
+	unsigned long long 	address;		// 33 bits
+	// Could make these smaller bit widths.
+	unsigned int 		rows; 			// 15 bits
+	unsigned int		upperColumns; 	//  8 bits
+	unsigned int		banks; 			//  2 bits
+	unsigned int		bankGroups; 	//  2 bits
+	unsigned int		lowerColumns; 	//  3 bits
+	unsigned int		byteSelect; 	//  3 bits
+} inputCommand_t, *inputCommandPtr_t;
 
 /**
 *	parser_state_t is used to interact with the parser ADT and understand what it currently holds and 

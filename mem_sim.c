@@ -13,15 +13,19 @@
 #include <limits.h>
 #include "wrappers.h"
 
+// Parameters
+#define CMD_QUEUE_SIZE	16
+
 /*
  * Helper function declarations.
  */ 
 char* parseArgs(int argc, char** argv);
 void Printf(char* format, ...);
 void Fprintf(FILE* stream, char* format, ...);
-queueItemPtr_t peakCommand(int index);
-void printRemoval(queueItemPtr_t item);
+inputCommandPtr_t peakCommand(int index);
+void printRemoval(inputCommandPtr_t item);
 void garbageCollection(void);
+void* queueRemove(queuePtr_t queue, unsigned index);
 
 /*
  * Global variables
@@ -46,7 +50,7 @@ int main(int argc, char** argv)
 	//Initialize pointer to command line that is used as a go between the parser and the queue
 	
 	//Init queue
-	commandQueue = create_queue();
+	commandQueue = create_queue(CMD_QUEUE_SIZE);
 	if (commandQueue == NULL)
 	{
 		Printf("Error in mem_sim: Could not create command queue.\n");
@@ -95,7 +99,7 @@ int main(int argc, char** argv)
 					Printf("mem_sim:Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
 				#endif
 				// Current command line is ready for the current time to be added to the queue
-				if(insert_queue_item(commandQueue, currentCommandLine) == NULL)
+				if(insert_queue_item(commandQueue, (void*)currentCommandLine) == NULL)
 				{
 					Fprintf(stderr,"Error in mem_sim: Failed to insert command into command queue.\n");
 					garbageCollection();
@@ -106,21 +110,21 @@ int main(int argc, char** argv)
 
 		//TODO this will turn into a scan to find commands that have waited tCL and tBURST since their read/write
 		//     was issued
+		#ifdef DEBUG
+			Printf("mem_sim: Scanning age of commands in queue\n");
+		#endif
 		// FOR EACH command in the queue:
 		for (int i = 1; i <= commandQueue->size; i++)
-		{
-			#ifdef DEBUG
-				Printf("mem_sim: Scanning age of commands in queue\n");
-			#endif
-			queueItemPtr_t current = peakCommand(i);
+		{	
 			// IF its age is >= 100, remove it and print output message
-			if (current->age >= 100)
+			if (getAge(i, commandQueue) >= 100)
 			{
 				#ifdef DEBUG
-					Printf("mem_sim: Found old entry at index %d with age %llu\n",i,current->age);
+					Printf("mem_sim: Found old entry at index %d with age %llu\n",i,getAge(i,commandQueue));
 				#endif
-				printRemoval(current);
-				remove_queue_item(i, commandQueue);
+				printRemoval(peakCommand(i));
+				void* oldEntry = queueRemove(commandQueue, i);
+				free(oldEntry);
 				i--;
 			}
 		}
@@ -139,10 +143,9 @@ int main(int argc, char** argv)
 			#ifdef DEBUG
 				Printf("mem_sim: Checking age of oldest command in queue\n");
 			#endif
-			queueItemPtr_t top = peakCommand(1);
-			timeJump = 100 - top->age;
+			timeJump = 100 - getAge(1, commandQueue);
 			#ifdef DEBUG
-				Printf("mem_sim: Age of oldest command is %llu, setting time jump to %llu\n", top->age, timeJump);
+				Printf("mem_sim: Age of oldest command is %llu, setting time jump to %llu\n", getAge(1, commandQueue), timeJump);
 			#endif
 		}
 		#ifdef DEBUG
@@ -217,15 +220,38 @@ void garbageCollection()
 	{
 		while (!is_empty(commandQueue))
 		{
-			remove_queue_item(1, commandQueue);
+			free(remove_queue_item(1, commandQueue));
 		}
 	}
 }
 
-void printRemoval(queueItemPtr_t item)
+/**
+ * @fn		queueRemove
+ * @brief	Wrapper function for removing items from a 'queue'
+ *
+ * @detail	Removes an item from the queue at the given index and verifies
+ *		that a non-NULL pointer was returned.
+ * @param	queue	Target queue
+ * @param	index	Location  of item in queue to be removed (starts at 1)
+ * @returns	Pointer to the item removed from the queue.
+ */
+void* queueRemove(queuePtr_t queue, unsigned index)
 {
-	Printf("\nAt time %llu, removed the following command inserted at %llu\n", currentTime, currentTime-item->age);
-	Printf("Trace Time:%llu, Command:%s, Addr:0x%llX\n",item->command->cpuCycle, getCommandString(item->command->command), item->command->address);
+	#ifdef DEBUG
+		Printf("mem_sim:Removing item from queue at index %u\n",index);
+	#endif
+	void* oldItem = remove_queue_item(index, queue);
+	if (oldItem == NULL)
+	{
+		Fprintf(stderr, "Error in mem_sim: Failed to remove item from at queue at index %u\n", index);
+	}
+	return oldItem;
+}
+
+void printRemoval(inputCommandPtr_t item)
+{
+	Printf("\nAt time %llu, removed the following command:\n", currentTime);
+	Printf("Trace Time:%llu, Command:%s, Addr:0x%llX\n",item->cpuCycle, getCommandString(item->command), item->address);
 }
 
 /**
@@ -235,12 +261,12 @@ void printRemoval(queueItemPtr_t item)
  * @param	index	Index that will be peaked in commandQueue
  * @returns	Pointer to the queue item at the index.
  */
-queueItemPtr_t peakCommand(int index)
+inputCommandPtr_t peakCommand(int index)
 {
-	queueItemPtr_t item = peak_queue_item(index, commandQueue);
+	inputCommandPtr_t item = (inputCommandPtr_t)peak_queue_item(index, commandQueue);
 	if (item == NULL)
 	{
-		Fprintf(stderr, "Error in mem_sim: Invalid reference to command queue at index %d.\nDumping contents of command queue to stdout.\n", index);
+		Fprintf(stderr, "Error in mem_sim: Invalid reference to command queue at index %u.\nDumping contents of command queue to stdout.\n", index);
 		print_queue(commandQueue, index, true);
 		garbageCollection();
 		exit(EXIT_FAILURE);

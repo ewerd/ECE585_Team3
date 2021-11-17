@@ -12,18 +12,9 @@
 #include <stdbool.h>
 #include "../wrappers.h"
 #include "mem_queue.h"
-#include "./../parser/parser.h"
 
-/*
-Preliminary queue for ECE 585 project
- 
-Pros:
-
-Cons:
-
- */
 // FUNCTION DEFINITIONS:
-queuePtr_t create_queue()
+queuePtr_t create_queue(unsigned maxSize)
 {
 	// variables:
 	queuePtr_t queue; 
@@ -40,15 +31,15 @@ queuePtr_t create_queue()
 	{
 		queue->firstCommand = NULL;
 		queue->size = 0;
-
+		queue->maxSize = maxSize;
 		return queue;
 	}
 }
 
-queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
+queueItemPtr_t insert_queue_item(queuePtr_t queue, void *item)
 {
 	// check if queue is available
-	if (queue->size == 16)
+	if (queue->size == queue->maxSize)
 	{
 		Fprintf(stderr, "\nError in mem_queue.insert_queue_item(): queue is full, cannot insert item...\n");
 		return NULL;
@@ -66,7 +57,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	else
 	{
 		// successful allocation; insert command into new queueItem
-		queueItem->command = command;
+		queueItem->item = item;
 		queueItem->prev = NULL;
 		queueItem->next = NULL;
 		queueItem->age = 0;
@@ -111,7 +102,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, inputCommandPtr_t command)
 	}
 }	
 
-queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
+void* peak_queue_item(int index, queuePtr_t queue)
 {
 	#ifdef DEBUG
 		Printf("Queue: Peaking at queue index %d. Size is %d\n", index, queue->size);
@@ -125,7 +116,7 @@ queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 		// index found, return pointer to queueItem
 		if (x == index)
 		{
-			return temp;
+			return temp->item;
 		}
 
 		// index not found, incrememnt to next node
@@ -140,17 +131,31 @@ queueItemPtr_t peak_queue_item(int index, queuePtr_t queue)
 	return NULL;
 }
 
-void remove_queue_item(int index, queuePtr_t queue)
+unsigned long long getAge(unsigned index, queuePtr_t queue)
+{
+	if (index > queue->size)
+		return ULLONG_MAX;
+
+	queueItemPtr_t node = queue->firstCommand;
+	for (int i = 1; i < index; i++)
+	{
+		node = node->next;
+	}
+
+	return node->age;
+}
+
+void* remove_queue_item(int index, queuePtr_t queue)
 {
 	//variables:
 	queueItemPtr_t next, temp = queue->firstCommand;
-
-	bool removed = false;
+	
+	void* removedItem = NULL;
 
 	for (int x = 1; x <= queue->size; x++)
 	{
 		// iterate through queue and free selected index
-		if (temp->index == index && !removed)
+		if (temp->index == index && removedItem == NULL)
 		{
 			// if next isn't NULL, assign
 			if (temp->next != NULL)
@@ -176,15 +181,14 @@ void remove_queue_item(int index, queuePtr_t queue)
 
 			// once prev and next properly assigned, free temp
 			next = temp->next;
+			removedItem = temp->item; //Save item for return
 			free(temp);
 			temp = next;
-			// set flag for index removed
-			removed = true;
 		}
 		else
 		{
 			// once the desired index is removed, decrement all proceeding elements
-			if (removed)
+			if (removedItem != NULL)
 			{
 				temp->index--;
 			}
@@ -196,10 +200,11 @@ void remove_queue_item(int index, queuePtr_t queue)
 			}
 		}
 	}
-	if (removed)
+	if (removedItem != NULL)
 	{
 		queue->size--;
 	}
+	return removedItem;
 }
 
 void age_queue(queuePtr_t queue, unsigned long long increment)
@@ -230,9 +235,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 		if (x == index || all) 
 		{
 			// shortener variable for readability
-			inputCommandPtr_t cmd = temp->command;
-
-			Printf("Item: %2d\t, Time = %10llu, Address = 0x%010llX\n", temp->index, cmd->cpuCycle, cmd->address);
+			Printf("Index: %2u\t, Age = %10llu, Address = 0x%llX\n", temp->index, temp->age, (unsigned)&temp->item);
 
 			if (temp->next != NULL)
 			{
@@ -250,5 +253,5 @@ bool is_empty(queuePtr_t queue)
 
 bool is_full(queuePtr_t queue)
 {
-	return (queue->size == 16);
+	return (queue->size == queue->maxSize);
 }
