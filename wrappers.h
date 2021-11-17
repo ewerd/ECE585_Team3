@@ -25,4 +25,13 @@ void Printf(char* format, ...);
  */
 void Fprintf(FILE* stream, char* format, ...);
 
+/**
+ * @fn		Malloc
+ * @brief	Wrapper function for malloc
+ *
+ * @param	size	Size of memory to be allocated
+ * @return	Pointer to new memory
+ */
+void *Malloc(size_t size);
+
 #endif

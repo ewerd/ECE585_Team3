@@ -21,14 +21,6 @@ void Printf(char* format, ...)
 	}
 }
 
-/**
- * @fn		Fprintf
- * @brief	Wrapper function for fprintf to catch errors
- *
- * @param	stream	fd of the target output file
- * @param	format	A format string provided to printf
- * @param	...	All other variables required for the given format string
- */
 void Fprintf(FILE* stream, char* format, ...)
 {
 	va_list args;
@@ -41,4 +33,15 @@ void Fprintf(FILE* stream, char* format, ...)
 		perror("Error calling fprintf()");
 		exit(EXIT_FAILURE);
 	}
+}
+
+void *Malloc(size_t size)
+{
+	void* newPtr = malloc(size);
+	if (newPtr == NULL)
+	{
+		perror("Error calling malloc()");
+		exit(EXIT_FAILURE);
+	}
+	return newPtr;
 }
