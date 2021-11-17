@@ -26,6 +26,7 @@ inputCommandPtr_t peakCommand(int index);
 void printRemoval(inputCommandPtr_t item);
 void garbageCollection(void);
 void* queueRemove(queuePtr_t queue, unsigned index);
+unsigned long long getTimeJump(parserPtr_t parser); 
 
 /*
  * Global variables
@@ -134,6 +135,8 @@ int main(int argc, char** argv)
 			}
 		}
 
+		unsigned long long timeJump = getTimeJump(parser);
+	
 		// If the command queue is empty and the parser is at EOF, then the simulation is done
 		if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
 		{
@@ -141,37 +144,6 @@ int main(int argc, char** argv)
 			break;
 		}
 
-		unsigned long long timeJump = ULLONG_MAX;
-		// Check age of oldest entry in queue
-		if (!is_empty(commandQueue))
-		{
-			#ifdef DEBUG
-				Printf("mem_sim: Checking age of oldest command in queue\n");
-			#endif
-			timeJump = 100 - getAge(1, commandQueue);
-			#ifdef DEBUG
-				Printf("mem_sim: Age of oldest command is %llu, setting time jump to %llu\n", getAge(1, commandQueue), timeJump);
-			#endif
-		}
-		#ifdef DEBUG
-			Printf("mem_sim: Parser line state = %s\n", getParserState(parser->lineState));
-		#endif
-		// Ask parser when next command arrives (this would be nice but not required by saturday)
-		if (parser->lineState != ENDOFFILE && !is_full(commandQueue))
-		{
-			#ifdef DEBUG
-				Printf("mem_sim: Time of next line is %llu\n", parser->nextLineTime);
-			#endif
-			if (parser->nextLineTime <= currentTime) //If we have a backlog of commands
-			{
-				timeJump = 1; //Time must advance by at least one
-			}
-			else
-			{
-				// Determine which of the previous two times is smaller
-				timeJump = (timeJump < (parser->nextLineTime-currentTime)) ? timeJump : (parser->nextLineTime-currentTime);
-			}
-		}
 		#ifdef DEBUG
 			Printf("mem_sim: Time jump will be %llu\n", timeJump);
 		#endif
@@ -228,6 +200,51 @@ void garbageCollection()
 			free(remove_queue_item(1, commandQueue));
 		}
 	}
+}
+
+/**
+ * @fn		getTimeJump
+ * @brief	Calculate time until another event can happen.
+ *
+ * @detail	Calculates time until next command can be issued to DIMM. If the command queue isn't empty,
+ *		also calculates time until next command from parser. Returns the smallest of the two times.
+ * @param	parser	Trace file parser
+ * @returns	Time until next decision simulation has to make
+ */
+unsigned long long getTimeJump(parserPtr_t parser)
+{
+	unsigned long long timeJump = ULLONG_MAX;
+	// Check age of oldest entry in queue
+	if (!is_empty(commandQueue))
+	{
+		#ifdef DEBUG
+			Printf("mem_sim: Checking age of oldest command in queue\n");
+		#endif
+		timeJump = 100 - getAge(1, commandQueue);
+		#ifdef DEBUG
+			Printf("mem_sim: Age of oldest command is %llu, setting time jump to %llu\n", getAge(1, commandQueue), timeJump);
+		#endif
+	}
+	#ifdef DEBUG
+		Printf("mem_sim: Parser line state = %s\n", getParserState(parser->lineState));
+	#endif
+	// Ask parser when next command arrives (this would be nice but not required by saturday)
+	if (parser->lineState != ENDOFFILE && !is_full(commandQueue))
+	{
+		#ifdef DEBUG
+			Printf("mem_sim: Time of next line is %llu\n", parser->nextLineTime);
+		#endif
+		if (parser->nextLineTime <= currentTime) //If we have a backlog of commands
+		{
+			timeJump = 1; //Time must advance by at least one
+		}
+		else
+		{
+			// Determine which of the previous two times is smaller
+			timeJump = (timeJump < (parser->nextLineTime-currentTime)) ? timeJump : (parser->nextLineTime-currentTime);
+		}
+	}
+	return timeJump;
 }
 
 /**
