@@ -8,41 +8,32 @@
  * @authors	TODO
  */
 
-//Track last write command time for tWTR_S
-//Last access time for tCCD_S
-//Track last ACT command for tRRD_S
+#include "group.h"
+#include "bank.h"
+#include "./wrappers.h"
 
-typedef struct {
-	//Track open row (-1 for no open row?)
-	//Track if precharged
-	//Last precharge time for tRP
-	//Last ACT time for tRCD
-	//Last write time for tWTR_L,CWL,tWR,tBURST
-	//Last read command for CL,tRTP,tBURST
-	//Current time so we know when commands finish for output printing
-}bank_t;
 
-typedef struct {
-	//Array of banks
-	//Last ACT command for tRRD_L
-	//Last access time for tCCD_L
-	//Last write time for tWTR_L
-}bGroup_t;
+typdef struct {
+	bGroup_t*		group;
+	unsigned long long	nextWrite; //Time available for next write(tCCD_S)
+	unsigned long long	nextRead; //Time available for next read(tCCD_S,tWTR_S)
+	unsigned long long	nextActivate; //Time available for next ACT command(tRRD_S)
+} dimm_t;
 
 //My thought is we just copy this format for a bank_group.h and bank.h. Then we'll recursively call
 //those functions from these functions
 
 /**
- * @fn		advTime
- * @brief	Method simulator uses to advance time.
+ * @fn		dimm_init
+ * @brief	Initializes a DIMM and returns a pointer to it
  *
- * @details	For the DIMM and its banks, advancing time changes which possible commands are available,
- *		how much time remains until prior commands complete, and, upon completion, some commands
- *		will generate terminal output that is displayed after time is advanced.
- * @param	t	Amount of time advanced in this time step
- * @return	0 on success. -1 otherwise (I/O problem with output)
+ * @detail	The DIMM will start with all banks precharged and ready for activation
+ * @param	groups	Number of bank groups
+ * @param	banks	Number of banks per group
+ * @param	rows	Number of rows per bank
+ * @returns	Pointer to new dimm_t struct
  */
-int advTime(int t);
+dimm_t *dimm_init(int groups, int banks, int rows);
 
 /**
  * @fn		dimm_canActivate
