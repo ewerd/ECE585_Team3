@@ -45,12 +45,12 @@ parserPtr_t initParser(char* inputFile)
 	}
 	
 	newParser->lineState = PARSE_ERROR;
+	newParser->nextLine = NULL;
 	
 	// Grab first line and update state accordingly
 	if (prepCommand(newParser) == -1)
 	{
-		fclose(newParser->filename);
-		free(newParser);
+		cleanParser(newParser);
 		return NULL;
 	}
 	
@@ -59,6 +59,16 @@ parserPtr_t initParser(char* inputFile)
 	#endif
 
 	return newParser; // Return the new parser ADT
+}
+
+void cleanParser(parser_t* parser)
+{
+	if (fclose(parser->filename) != 0)
+	{
+		Fprintf(stderr, "Error in Parser.cleanParser(): Error closing input stream\n");
+	}
+	free(parser->nextLine);
+	free(parser);
 }
 
 inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime)

@@ -184,6 +184,11 @@ void garbageCollection()
 			free(remove_queue_item(1, commandQueue));
 		}
 	}
+	
+	if(parser)
+	{
+		cleanParser(parser);
+	}
 }
 
 /**

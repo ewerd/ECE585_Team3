@@ -92,6 +92,14 @@ parserPtr_t initParser(char* inputFile);
 inputCommandPtr_t getCommand(parserPtr_t parser, unsigned long long currentTime);
 
 /**
+ * @fn		cleanParser
+ * @brief	Closes all fds and frees dynamic memory of a given parser_t
+ *
+ * @param	parser	Target parser to be cleaned
+ */
+void cleanParser(parser_t* parser);
+
+/**
  * @fn		prepCommand
  * @brief	Reads and parsers a line from the input file
  *
