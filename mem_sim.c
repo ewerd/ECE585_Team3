@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 		for (int i = 1; i <= commandQueue->size; i++)
 		{	
 			// IF its age is >= 100, remove it and print output message
-			if (getAge(i, commandQueue) >= 100)
+			if (getAge(i, commandQueue) == 0)
 			{
 				#ifdef DEBUG
 					Printf("mem_sim: Found old entry at index %d with age %llu\n",i,getAge(i,commandQueue));
@@ -206,6 +206,10 @@ int updateCommands()
 			Fprintf(stderr,"Error in mem_sim.updateCommands(): Failed to insert command into command queue.\n");
 			return -1;
 		}
+		#ifdef DEBUG
+			Printf("mem_sim.updateCommands():Setting age of new command to 100.\n");
+		#endif
+		setAge(commandQueue->size, 100, commandQueue);
 	}
 	return 0;
 }
@@ -264,21 +268,24 @@ unsigned long long getTimeJump()
 	if (!is_empty(commandQueue))
 	{
 		#ifdef DEBUG
-			Printf("mem_sim: Checking age of oldest command in queue\n");
+			Printf("mem_sim.getTimeJump(): Checking age of oldest command in queue\n");
 		#endif
-		timeJump = 100 - getAge(1, commandQueue);
+		timeJump = getAge(1, commandQueue);
+		if (timeJump < 1)
+			timeJump = 1;
+
 		#ifdef DEBUG
-			Printf("mem_sim: Age of oldest command is %llu, setting time jump to %llu\n", getAge(1, commandQueue), timeJump);
+			Printf("mem_sim.getTimeJump(): Age of oldest command is %llu, setting time jump to %llu\n", getAge(1, commandQueue), timeJump);
 		#endif
 	}
 	#ifdef DEBUG
-		Printf("mem_sim: Parser line state = %s\n", getParserState(parser->lineState));
+		Printf("mem_sim.getTimeJump(): Parser line state = %s\n", getParserState(parser->lineState));
 	#endif
 	// Ask parser when next command arrives (this would be nice but not required by saturday)
 	if (parser->lineState != ENDOFFILE && !is_full(commandQueue))
 	{
 		#ifdef DEBUG
-			Printf("mem_sim: Time of next line is %llu\n", parser->nextLineTime);
+			Printf("mem_sim.getTimeJump(): Time of next line is %llu\n", parser->nextLineTime);
 		#endif
 		if (parser->nextLineTime <= currentTime) //If we have a backlog of commands
 		{

@@ -99,6 +99,17 @@ void *peak_queue_item(int index, queuePtr_t queue);
 unsigned long long getAge(unsigned index, queuePtr_t queue);
 
 /**
+ * @fn		setAge
+ * @brief	Sets the age of a specific item in the queue
+ *
+ * @param	index	Index of the target item
+ * @param	age	New age for the item
+ * @param	queue	Target queue
+ * @returns	0 if successfull. -1 otherwise
+ */
+int setAge(unsigned index, unsigned long long age, queue_t *queue);
+
+/**
 * FUNCTION:			remove_queue_item
 *
 * INFO:				Removes an item from the queue (completed memory request)

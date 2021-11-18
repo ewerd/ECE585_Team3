@@ -67,7 +67,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, void *item)
 	}
 
 	// variables:
-	queueItemPtr_t queueItem = newNode(item, 0);
+	queueItemPtr_t queueItem = newNode(item, ULLONG_MAX);
 
 	// determine if queue is empty
 	if (queue->firstCommand == NULL)
@@ -234,6 +234,21 @@ unsigned long long getAge(unsigned index, queuePtr_t queue)
 	return node->age;
 }
 
+int setAge(unsigned index, unsigned long long age, queue_t *queue)
+{
+	queueItem_t *entry = queue->firstCommand;
+	for (int i = 1; i < index; i++)
+	{
+		if (entry == NULL)
+			return -1;
+
+		entry = entry->next;
+	}
+
+	entry->age = age;
+	return 0;
+}
+
 void* remove_queue_item(int index, queuePtr_t queue)
 {
 	//variables:
@@ -298,17 +313,16 @@ void* remove_queue_item(int index, queuePtr_t queue)
 
 void age_queue(queuePtr_t queue, unsigned long long increment)
 {
-	// variables:
-	queueItemPtr_t temp = queue->firstCommand;
-
 	// go through queue and age each queue item
-	for (int x = 1; x <= queue->size; x++)
+	for (queueItemPtr_t current = queue->firstCommand; current != NULL; current = current->next)
 	{
-		temp->age += increment;
-
-		if (temp->next != NULL)
+		if (current->age - increment > current->age)
 		{
-			temp = temp->next;
+			current->age = 0;
+		}
+		else
+		{
+			current->age -= increment;
 		}
 	}
 }
@@ -317,7 +331,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 {
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
-	Printf("\n\nQUEUE:\n");
+	Printf("\nQUEUE:\n");
 	// go through queue items and print out relevant information for debugging
 	for (int x = 1; x <= queue->size; x++)
 	{
