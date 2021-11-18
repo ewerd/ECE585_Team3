@@ -26,8 +26,9 @@ inputCommandPtr_t peakCommand(int index);
 void printRemoval(inputCommandPtr_t item);
 void garbageCollection(void);
 void* queueRemove(queuePtr_t queue, unsigned index);
+unsigned long long advanceTime();
 unsigned long long getTimeJump();
-int checkNewCommand();
+int updateCommands();
 
 /*
  * Global variables
@@ -90,10 +91,10 @@ int main(int argc, char** argv)
 			}
 		#endif
 		
-		//Check for new command
-		if (checkNewCommand() != 0)
+		//Update command queue
+		if (updateCommands() != 0)
 		{
-			Fprintf(stderr, "Error in mem_sim: Failed checking for next command.\n");
+			Fprintf(stderr, "Error in mem_sim: Failed updating command queue.\n");
 			garbageCollection();
 			return -1;
 		}
@@ -119,37 +120,17 @@ int main(int argc, char** argv)
 			}
 		}
 
-		unsigned long long timeJump = getTimeJump();
-	
-		// If the command queue is empty and the parser is at EOF, then the simulation is done
-		if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
+		// Advance time. If end conditions met, 0 will be returned.
+		if (advanceTime() == 0)
 		{
-			Printf("At time %llu, last command removed from queue. Ending simulation.\n", currentTime);
-			break;
+			break; //Simulation complete, exit while loop
 		}
+	}//End MOL
 
-		#ifdef DEBUG
-			Printf("mem_sim: Time jump will be %llu\n", timeJump);
-		#endif
-		// Check if the time jump would take us past the limit of the simulation
-		if (currentTime + timeJump < currentTime)
-		{
-			Printf("Simulation exceeded max simulation time of %llu. Ending simulation", ULLONG_MAX);
-			break;
-		}
-		// Advance current time by that calculated time
-		currentTime += timeJump;
-		#ifdef DEBUG
-			Printf("mem_sim: Aging command queue\n");
-		#endif
-		// Age items in queue by time advanced
-		age_queue(commandQueue, timeJump);
-		// Loop back to start of WHILE loop
-	}
 	// garbage collection for queue and parser
-
 	garbageCollection();
-	return 0;
+	
+	return 0; //End
 	
 	//***********************************************************************************************
 
@@ -192,14 +173,14 @@ void garbageCollection()
 }
 
 /**
- * @fn		checkNewCommand
+ * @fn		updateCommands
  * @brief	Loads the next command from the parser into the command queue
  *
  * @detail	If the command queue isn't full, passes the currentTime to the parser and requests a new command. If a new
  *		command is returned, it is added to the command queue.
  * @returns	0 if no errors occurred. -1 otherwise.
  */
-int checkNewCommand()
+int updateCommands()
 {
 	if (is_full(commandQueue) || parser->lineState == ENDOFFILE)
 	{
@@ -210,23 +191,62 @@ int checkNewCommand()
 	//Ask parser for next command at the current time
 	inputCommandPtr_t currentCommandLine = getCommand(parser, currentTime);
 	#ifdef DEBUG
-		Printf("mem_sim.checkNewCommand(): Checked parser for new command.\n");
+		Printf("mem_sim.updateCommands(): Checked parser for new command.\n");
 	#endif
 
 	//If the pointer isn't NULL, add the command to the command queue
 	if (currentCommandLine != NULL)
 	{
 		#ifdef DEBUG
-			Printf("mem_sim.checkNewCommand():Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
+			Printf("mem_sim.updateCommands():Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
 		#endif
 		// Current command line is ready for the current time to be added to the queue
 		if(insert_queue_item(commandQueue, (void*)currentCommandLine) == NULL)
 		{
-			Fprintf(stderr,"Error in mem_sim.checkNewCommand(): Failed to insert command into command queue.\n");
+			Fprintf(stderr,"Error in mem_sim.updateCommands(): Failed to insert command into command queue.\n");
 			return -1;
 		}
 	}
 	return 0;
+}
+
+/**
+ * @fn		advanceTime
+ * @brief	Advances simulation time to next event
+ *
+ * @detail	Checks the time of the next pending command from the trace file and the next time a command can be issued
+ *		to the DIMM. Simulation time is advanced by the smaller of the two. If the simulation is complete, 0 will
+ *		be returned.
+ * @returns	CPU clock cycles that time has been advanced. 0 if the simulation is over.
+ */
+unsigned long long advanceTime()
+{
+	unsigned long long timeJump = getTimeJump();
+
+	// If the command queue is empty and the parser is at EOF, then the simulation is done
+	if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
+	{
+		Printf("At time %llu, last command removed from queue. Ending simulation.\n", currentTime);
+		return 0;
+	}
+
+	#ifdef DEBUG
+		Printf("mem_sim.advanceTime(): Time jump will be %llu\n", timeJump);
+	#endif
+	// Check if the time jump would take us past the limit of the simulation
+	if (currentTime + timeJump < currentTime)
+	{
+		Printf("Simulation exceeded max simulation time of %llu. Ending simulation", ULLONG_MAX);
+		return 0;
+	}
+	// Advance current time by that calculated time
+	currentTime += timeJump;
+	#ifdef DEBUG
+		Printf("mem_sim.advanceTime(): Aging command queue\n");
+	#endif
+	// Age items in queue by time advanced
+	age_queue(commandQueue, timeJump);
+	return timeJump;
 }
 
 /**
