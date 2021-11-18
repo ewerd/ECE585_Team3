@@ -49,7 +49,7 @@ parserPtr_t initParser(char* inputFile)
 	// Grab first line and update state accordingly
 	if (prepCommand(newParser) == -1)
 	{
-		fclose(inputFile);
+		fclose(newParser->filename);
 		free(newParser);
 		return NULL;
 	}
@@ -125,7 +125,7 @@ int prepCommand(parserPtr_t parser)
 	}
 
 	// Allocate memory for next line
-	parser->nextLine = Malloc(sizeof(inputCommand_t))
+	parser->nextLine = Malloc(sizeof(inputCommand_t));
 
 	parser->nextLine->cpuCycle = time;
 	parser->nextLine->command = (operation_t)commandInt;
@@ -141,6 +141,7 @@ int prepCommand(parserPtr_t parser)
 	#ifdef DEBUG
 		printCurrentLine(parser->nextLine);
 	#endif
+	return 0;
 }
 
 parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime)

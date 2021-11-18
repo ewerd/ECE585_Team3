@@ -26,13 +26,15 @@ inputCommandPtr_t peakCommand(int index);
 void printRemoval(inputCommandPtr_t item);
 void garbageCollection(void);
 void* queueRemove(queuePtr_t queue, unsigned index);
-unsigned long long getTimeJump(parserPtr_t parser); 
+unsigned long long getTimeJump();
+int checkNewCommand();
 
 /*
  * Global variables
  */
 unsigned long long currentTime;
 queuePtr_t commandQueue;
+parser_t *parser;
 
 
 int main(int argc, char** argv)
@@ -46,7 +48,7 @@ int main(int argc, char** argv)
 	}
 
 	//Init parser
-	parserPtr_t parser = initParser(inputFile);
+	parser = initParser(inputFile);
 	if (parser == NULL)
 	{
 		Fprintf(stderr, "Error in mem_sim:Failed to initialize parser.\n");
@@ -76,42 +78,24 @@ int main(int argc, char** argv)
 	while(1)
 	{
 		#ifdef DEBUG
-		Printf("*************************************************************************\n");
-		Printf("mem_sim: Top of operating loop. Status is as follows:\n");
-		Printf("Current Time: %llu\n", currentTime);
-		Printf("State of parser: %s\n", getParserState(parser->lineState));
-		Printf("Size of command Queue: %d\n", commandQueue->size);
-		if (!is_empty(commandQueue))
-		{
-			Printf("Printing command queue:\n");
-			print_queue(commandQueue, 1, true);
-		}
+			Printf("*************************************************************************\n");
+			Printf("mem_sim: Top of operating loop. Status is as follows:\n");
+			Printf("Current Time: %llu\n", currentTime);
+			Printf("State of parser: %s\n", getParserState(parser->lineState));
+			Printf("Size of command Queue: %d\n", commandQueue->size);
+			if (!is_empty(commandQueue))
+			{
+				Printf("Printing command queue:\n");
+				print_queue(commandQueue, 1, true);
+			}
 		#endif
 		
-		// If the command queue isn't full and the parser hasn't reached EOF
-		if ((is_full(commandQueue) == false) && (parser->lineState != ENDOFFILE))
+		//Check for new command
+		if (checkNewCommand() != 0)
 		{
-			//Ask parser for next command at the current time
-			inputCommandPtr_t currentCommandLine = NULL;
-			currentCommandLine = getCommand(parser, currentTime);
-			#ifdef DEBUG
-				Printf("mem_sim: Checked parser for new command.\n");
-			#endif
-
-			//If the pointer isn't NULL, add the command to the command queue
-			if (currentCommandLine != NULL)
-			{
-				#ifdef DEBUG
-					Printf("mem_sim:Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
-				#endif
-				// Current command line is ready for the current time to be added to the queue
-				if(insert_queue_item(commandQueue, (void*)currentCommandLine) == NULL)
-				{
-					Fprintf(stderr,"Error in mem_sim: Failed to insert command into command queue.\n");
-					garbageCollection();
-					return -1;
-				}
-			}
+			Fprintf(stderr, "Error in mem_sim: Failed checking for next command.\n");
+			garbageCollection();
+			return -1;
 		}
 
 		//TODO this will turn into a scan to find commands that have waited tCL and tBURST since their read/write
@@ -135,7 +119,7 @@ int main(int argc, char** argv)
 			}
 		}
 
-		unsigned long long timeJump = getTimeJump(parser);
+		unsigned long long timeJump = getTimeJump();
 	
 		// If the command queue is empty and the parser is at EOF, then the simulation is done
 		if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
@@ -203,15 +187,52 @@ void garbageCollection()
 }
 
 /**
+ * @fn		checkNewCommand
+ * @brief	Loads the next command from the parser into the command queue
+ *
+ * @detail	If the command queue isn't full, passes the currentTime to the parser and requests a new command. If a new
+ *		command is returned, it is added to the command queue.
+ * @returns	0 if no errors occurred. -1 otherwise.
+ */
+int checkNewCommand()
+{
+	if (is_full(commandQueue) || parser->lineState == ENDOFFILE)
+	{
+		return 0;
+	}
+
+	// If the command queue isn't full and the parser hasn't reached EOF
+	//Ask parser for next command at the current time
+	inputCommandPtr_t currentCommandLine = getCommand(parser, currentTime);
+	#ifdef DEBUG
+		Printf("mem_sim.checkNewCommand(): Checked parser for new command.\n");
+	#endif
+
+	//If the pointer isn't NULL, add the command to the command queue
+	if (currentCommandLine != NULL)
+	{
+		#ifdef DEBUG
+			Printf("mem_sim.checkNewCommand():Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
+		#endif
+		// Current command line is ready for the current time to be added to the queue
+		if(insert_queue_item(commandQueue, (void*)currentCommandLine) == NULL)
+		{
+			Fprintf(stderr,"Error in mem_sim.checkNewCommand(): Failed to insert command into command queue.\n");
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/**
  * @fn		getTimeJump
  * @brief	Calculate time until another event can happen.
  *
  * @detail	Calculates time until next command can be issued to DIMM. If the command queue isn't empty,
  *		also calculates time until next command from parser. Returns the smallest of the two times.
- * @param	parser	Trace file parser
  * @returns	Time until next decision simulation has to make
  */
-unsigned long long getTimeJump(parserPtr_t parser)
+unsigned long long getTimeJump()
 {
 	unsigned long long timeJump = ULLONG_MAX;
 	// Check age of oldest entry in queue
