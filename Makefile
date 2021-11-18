@@ -6,8 +6,8 @@ CC = gcc
 CFLAGS = -Wall -std=c99 -g
 OBJS = parser.o mem_queue.o mem_sim.o
 LDFLAGS = -lm
-SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c wrappers.c
-HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h
+SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c wrappers.c dimm/dimm.c dimm/group.c dimm/bank.c
+HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h dimm/dimm.h dimm/group.h dimm/bank.h
 EXE  = sim.exe
 
 sim : $(OBJS)
@@ -23,7 +23,7 @@ parser.o : parser/parser.c parser/parser.h
 	$(CC) $(CFLAGS) -c parser/parser.c
 
 # -DDEBUG will define DEBUG and recompile everything with DEBUG symbols enabled
-debug :
+debug : $(OBJS)
 	$(CC) $(CFLAGS) -DDEBUG -o $(EXE) $(SRC)
 
 clean:

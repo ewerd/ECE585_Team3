@@ -1,5 +1,7 @@
 
 
+#include "group.h"
+
 void group_init(int banks, int rows, bGroup_t *newGroup)
 {
 	newGroup->bank = Malloc(banks * sizeof(bank_t));

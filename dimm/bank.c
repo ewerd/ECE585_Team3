@@ -1,5 +1,7 @@
 
 
+#include "bank.h"
+
 void bank_init(int rows, bank_t *newBank)
 {
 	newBank->maxRows = rows;

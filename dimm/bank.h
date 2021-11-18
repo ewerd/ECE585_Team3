@@ -1,5 +1,8 @@
 
 
+#ifndef BANK_H_
+#define BANK_H_
+
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
 typedef struct {
@@ -20,3 +23,5 @@ typedef struct {
  * @param	newBank	Target bank
  */
 void bank_init(int rows, bank_t *newBank);
+
+#endif

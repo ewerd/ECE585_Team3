@@ -1,7 +1,10 @@
 
 
+#ifndef GROUP_H_
+#define GROUP_H_
+
 #include "bank.h"
-#include "./wrappers.h"
+#include "../wrappers.h"
 
 typedef struct {
 	bank_t*			bank; //Array of banks
@@ -18,4 +21,6 @@ typedef struct {
  * @param	rows	Rows per bank
  * @param	newGroup	Target bank group
  */
-void group_init(int banks, int rows, bGroup_t *newGroup);	
+void group_init(int banks, int rows, bGroup_t *newGroup);
+
+#endif

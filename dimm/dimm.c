@@ -1,12 +1,12 @@
 
 
-
+#include "dimm.h"
 
 dimm_t *dimm_init(int groups, int banks, int rows)
 {
 	dimm_t *newDimm = Malloc(sizeof(dimm_t));
 	newDimm->group = Malloc(groups*sizeof(bGroup_t));
-	for (int i = 0; i < groups)
+	for (int i = 0; i < groups; i++)
 	{
 		group_init(banks, rows, &newDimm->group[i]);	
 	}

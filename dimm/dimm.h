@@ -8,12 +8,15 @@
  * @authors	TODO
  */
 
+#ifndef DIMM_H_
+#define DIMM_H_
+
 #include "group.h"
 #include "bank.h"
-#include "./wrappers.h"
+#include "../wrappers.h"
 
 
-typdef struct {
+typedef struct {
 	bGroup_t*		group;
 	unsigned long long	nextWrite; //Time available for next write(tCCD_S)
 	unsigned long long	nextRead; //Time available for next read(tCCD_S,tWTR_S)
@@ -144,3 +147,5 @@ int dimm_canWrite(int bGroup, int bank, int row);
  *		until it can be issued. -1 otherwise.
  */
 int dimm_write(int bGroup, int bank, int row, int col);
+
+#endif
