@@ -27,4 +27,4 @@ debug : $(OBJS)
 	$(CC) $(CFLAGS) -DDEBUG -o $(EXE) $(SRC)
 
 clean:
-	@rm $(OBJS) sim.exe -f
+	@rm -f $(OBJS) sim.exe
