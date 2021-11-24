@@ -80,6 +80,17 @@ int group_canPrecharge(bGroup_t *group, unsigned bank, unsigned long long curren
 	return bank_canPrecharge(group->bank[bank], currentTime);
 }
 
+int group_precharge(bGroup_t *group, unsigned bank, unsigned long long currentTime)
+{
+	if (group_checkArgs(group, bank) < 0)
+	{
+		Fprintf(stderr, "Error in group.group_canPrecharge(): Bad arguments passed.\n");
+		return -2;
+	}
+	
+	return bank_precharge(group->bank[bank], currentTime);
+}
+
 /**
  * @fn		group_checkArgs
  * @brief	Helper function to check if pointer is NULL and bank is within bounds

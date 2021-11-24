@@ -76,4 +76,17 @@ int group_activate(bGroup_t *group, unsigned bank, unsigned row, unsigned long l
  *		-2 if a bad argument is passed. -1 if the bank isn't activated.
  */
 int group_canPrecharge(bGroup_t *group, unsigned bank, unsigned long long currentTime);
+
+/**
+ * @fn		group_precharge
+ * @brief	Precharges a bank in a bank group
+ *
+ * @param	group	Pointer to a bank group
+ * @param	bank	Bank number that will receive PRE command
+ * @param	currentTime	The current simulation time
+ * @param	If PRE cmd issued successfully, returns time until PRE command is completed. 
+ *		-2 if a bad argument is passed.-1 otherwise.
+ */
+int group_precharge(bGroup_t *group, unsigned bank, unsigned long long currentTime);
+
 #endif

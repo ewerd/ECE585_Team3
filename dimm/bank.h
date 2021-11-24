@@ -5,6 +5,7 @@
 
 #define TRCD	24
 #define TRAS	52
+#define TRP	24
 
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
@@ -76,4 +77,14 @@ int bank_activate(bank_t *bank, unsigned row, unsigned long long currentTime);
  */
 int bank_canPrecharge(bank_t *bank, unsigned long long currentTime);
 
+/**
+ * @fn		bank_precharge
+ * @brief	Issues a precharge command to the bank
+ *
+ * @param	bank	Pointer to a bank
+ * @param	currentTime	Current simulation time
+ * @return	If successful, time until the PRE cmd is completed. -2 if bad arguments
+ *		are passed. -1 otherwise
+ */
+int bank_precharge(bank_t *bank, unsigned long long currentTime);
 #endif

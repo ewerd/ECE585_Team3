@@ -83,3 +83,27 @@ int bank_canPrecharge(bank_t *bank, unsigned long long currentTime)
 	}
 	return (bank->nextPrecharge > currentTime) ? bank->nextPrecharge - currentTime : 0;
 }
+
+int bank_precharge(bank_t *bank, unsigned long long currentTime)
+{
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_precharge(): NULL bank pointer passed.\n");
+		return -2;
+	}
+
+	if (bank->state != ACTIVE)
+	{
+		Fprintf(stderr, "Error in bank.bank_precharge(): Bank is not activated.\n");
+		return -1;
+	}
+	if (currentTime < bank->nextPrecharge)
+	{
+		Fprintf(stderr, "Error in bank.bank_precharge(): Bank is not ready to precharge. %llu cycles remain.\n", bank->nextPrecharge-currentTime);
+		return -1;
+	}
+
+	bank->state = PRECHARGED;
+	bank->nextActivate = currentTime + TRP * SCALE_FACTOR;
+	return TRP * SCALE_FACTOR;
+}

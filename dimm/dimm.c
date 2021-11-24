@@ -78,6 +78,17 @@ int dimm_canPrecharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long
 	return group_canPrecharge(dimm->group[group], bank, currentTime);
 }
 
+int dimm_precharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime)
+{
+	if (dimm_checkArgs(dimm, group < 0))
+	{
+		Fprintf(stderr, "Error in dimm.dimm_precharge(): Bad arguments.\n");
+		return -2;	
+	}
+
+	return group_precharge(dimm->group[group], bank, currentTime);
+}
+
 // ------------------------------------------------------Helper Functions-------------------------------------------------------------
 
 /**

@@ -97,12 +97,14 @@ int dimm_canPrecharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long
  * @brief	Precharges a bank
  *
  * @detail	Verifies the bank is available for precharging and issues the command.
- * @param	bGroup	Bank group
+ * @param	dimm	Pointer to dimm struct
+ * @param	group	Bank group
  * @param	bank	Target bank
- * @return	0 if the command was issued. Some positive integer if the command can't be
- *		issued yet (see dimm_canPrecharge()). -1 otherwise
+ * @param	currentTime	Current simulation time
+ * @return	If the command is issued, some positive integer that is the time in CPU cycles
+ *		until the command is completed. -2 if bad arguments are passed. -1 otherwise
  */
-int dimm_precharge(int bGroup, int bank);
+int dimm_precharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime);
 
 /**
  * @fn		dimm_canRead
