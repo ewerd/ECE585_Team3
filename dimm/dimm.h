@@ -17,6 +17,7 @@
 
 #define TRRD_S		4 //Time between row activations in different bank groups
 #define TCCD_S		4 //Time between reads and writes in different bank groups
+#define TWTR_S		4 //Time after a write burst finishes before a read can be issued
 #define SCALE_FACTOR	2 //Ratio of CPU clock speed to MEM clock speed
 
 typedef struct {
@@ -163,13 +164,14 @@ int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
  * @brief	Issues a write command to a bank
  *
  * @detail	Verifies that the write command is legal and issues it to the target bank.
- * @param	bGroup	Bank group
+ * @param	dimm	Pointer to the dimm struct
+ * @param	group	Bank group
  * @param	bank	Target bank
  * @param	row	Target row
- * @param	col	Target column
- * @return	0 if the command is issued. A positive integer if some definite time remains
- *		until it can be issued. -1 otherwise.
+ * @param	currentTime	Current simulation time
+ * @return	If the command is issued, some positive integer that is the time in CPU cycles
+ *		until the command is completed. -2 if bad arguments are passed. -1 otherwise
  */
-int dimm_write(int bGroup, int bank, int row, int col);
+int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime);
 
 #endif

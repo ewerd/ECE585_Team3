@@ -8,6 +8,7 @@
 #define TCAS	24
 #define TRTP	12
 #define TRP	24
+#define TWR	20
 #define TBURST	4
 #define CWL	20
 
@@ -133,5 +134,17 @@ int bank_read(bank_t *bank, unsigned row, unsigned long long currentTime);
  *		-2 if the bank is NULL. -1 otherwise.
  */
 int bank_canWrite(bank_t *bank, unsigned row, unsigned long long currentTime);
+
+/**
+ * @fn		bank_write
+ * @brief	Issues a write command to the bank
+ *
+ * @param	bank	Pointer to a bank
+ * @param	row	Row to be written to
+ * @param	currentTime	Current simulation time
+ * @return	If successful, time until the write cmd is completed. -2 if bad arguments
+ *		are passed. -1 otherwise
+ */
+int bank_write(bank_t *bank, unsigned row, unsigned long long currentTime);
 
 #endif

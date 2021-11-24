@@ -184,3 +184,37 @@ int bank_canWrite(bank_t *bank, unsigned row, unsigned long long currentTime)
 
 	return (currentTime < bank->nextWrite) ? (int)(bank->nextWrite-currentTime) : 0;
 }
+
+int bank_write(bank_t *bank, unsigned row, unsigned long long currentTime)
+{
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_write(): NULL bank pointer passed.\n");
+		return -2;
+	}
+	if (row >= bank->maxRows)
+	{
+		Fprintf(stderr, "Error in bank.bank_write(): Row %u out of bounds. Last row is %u.\n", row, bank->maxRows-1);
+		return -2;
+	}
+
+	if (bank->state != ACTIVE)
+	{
+		Fprintf(stderr, "Error in bank.bank_write(): Bank has not been activated.\n");
+		return -1;
+	}
+	if (bank->row != row)
+	{
+		Fprintf(stderr, "Error in bank.bank_write(): %u is the active row. Cannot write to row %u.\n", bank->row, row);
+		return -1;
+	}
+	if (currentTime < bank->nextWrite)
+	{
+		Fprintf(stderr, "Error in bank.bank_write(): Bank is not ready for write command. %llu cycles remain.\n", bank->nextWrite - currentTime);
+		return -1;
+	}
+
+	unsigned long long twrTime = currentTime + (CWL + TBURST + TWR) * SCALE_FACTOR;
+	bank->nextPrecharge = (bank->nextPrecharge > twrTime) ? bank->nextPrecharge : twrTime;
+	return CWL * SCALE_FACTOR;
+}

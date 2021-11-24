@@ -8,6 +8,7 @@
 
 #define TRRD_L	6
 #define TCCD_L	8
+#define TWTR_L	12
 
 typedef struct {
 	bank_t**		bank; //Array of banks
@@ -135,5 +136,18 @@ int group_read(bGroup_t *group, unsigned bank, unsigned row, unsigned long long 
  *		-2 if a bad argument is passed. -1 if the bank isn't activated.
  */
 int group_canWrite(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
+
+/**
+ * @fn		group_write
+ * @brief	Writes a column to an activated row in a bank within a bank group
+ *
+ * @param	group	Pointer to a bank group
+ * @param	bank	Bank number that will receive write command
+ * @param	row	Row that will be written to
+ * @param	currentTime	The current simulation time
+ * @param	If write cmd issued successfully, returns time until command is completed. 
+ *		-2 if a bad argument is passed.-1 otherwise.
+ */
+int group_write(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
 
 #endif

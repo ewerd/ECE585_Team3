@@ -130,9 +130,9 @@ int dimm_read(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigne
 	}
 
 	
-	if (currentTime < dimm->nextActivate)
+	if (currentTime < dimm->nextRead)
 	{
-		Fprintf(stderr, "Error in dimm.dimm_read(): Dimm not ready to read. %llu cycles remain.\n",dimm->nextActivate - currentTime);
+		Fprintf(stderr, "Error in dimm.dimm_read(): Dimm not ready to read. %llu cycles remain.\n",dimm->nextRead - currentTime);
 		return -1;
 	}
 	int readTime = group_read(dimm->group[group], bank, row, currentTime);
@@ -163,6 +163,32 @@ int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
 	
 	int dimmWriteTime = (dimm->nextWrite > currentTime) ? dimm->nextWrite - currentTime : 0;
 	return (dimmWriteTime < groupWriteTime) ? groupWriteTime : dimmWriteTime;
+}
+
+int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
+{
+	if (dimm_checkArgs(dimm, group < 0))
+	{
+		Fprintf(stderr, "Error in dimm.dimm_write(): Bad arguments.\n");
+		return -2;	
+	}
+
+	if (currentTime < dimm->nextWrite)
+	{
+		Fprintf(stderr, "Error in dimm.dimm_write(): Dimm not ready to write. %llu cycles remain.\n",dimm->nextWrite - currentTime);
+		return -1;
+	}
+	int writeTime = group_write(dimm->group[group], bank, row, currentTime);
+	if (writeTime > 0)
+	{
+		dimm->nextWrite = currentTime + TCCD_S * SCALE_FACTOR;
+		dimm->nextRead = currentTime + (CWL + TBURST + TWTR_S) * SCALE_FACTOR;
+	}
+	else
+	{
+		Fprintf(stderr, "Error in dimm.dimm_write(): Could not write to group %u.\n", group);
+	}
+	return writeTime;
 }
 
 // ------------------------------------------------------Helper Functions-------------------------------------------------------------
