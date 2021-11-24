@@ -46,7 +46,7 @@ void bank_deinit(bank_t *bank);
  * @param	currentTime	The current simulation time (in CPU clock cycles)
  * @return	0 if the bank is precharged and ready for activation. A positive integer
  *		that is the time remaining if the bank is in the process of precharging.
- *		-2 if group or bank is out of bounds. -1 otherwise.
+ *		-2 if the bank is NULL. -1 otherwise.
  */
 int bank_canActivate(bank_t *bank, unsigned long long currentTime);
 
@@ -61,5 +61,19 @@ int bank_canActivate(bank_t *bank, unsigned long long currentTime);
  *		are passed. -1 otherwise
  */
 int bank_activate(bank_t *bank, unsigned row, unsigned long long currentTime);
+
+/**
+ * @fn		bank_canPrecharge
+ * @brief	Checks if the specified bank can start a precharge
+ *
+ * @details	Verifies that the bank is already activated and returns the time till 
+ *		a precharge command can be issued.
+ * @param	bank	Pointer to the bank struct
+ * @param	currentTime	The current simulation time (in CPU clock cycles)
+ * @return	0 if the bank is activated and ready for precharge. A positive integer
+ *		that is the time remaining if the bank is in the process of activating,
+ *		reading or writing.-2 if the bank is NULL. -1 otherwise.
+ */
+int bank_canPrecharge(bank_t *bank, unsigned long long currentTime);
 
 #endif

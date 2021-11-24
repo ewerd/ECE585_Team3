@@ -68,3 +68,18 @@ int bank_activate(bank_t *bank, unsigned row, unsigned long long currentTime)
 	bank->nextPrecharge = currentTime + TRAS * SCALE_FACTOR;
 	return TRCD * SCALE_FACTOR; //Return time till activation complete
 }
+
+int bank_canPrecharge(bank_t *bank, unsigned long long currentTime)
+{
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_canPrecharge(): NULL bank pointer passed.\n");
+		return -2;
+	}
+
+	if (bank->state == PRECHARGED)
+	{
+		return -1;
+	}
+	return (bank->nextPrecharge > currentTime) ? bank->nextPrecharge - currentTime : 0;
+}

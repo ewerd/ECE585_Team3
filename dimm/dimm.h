@@ -83,12 +83,14 @@ int dimm_activate(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
  *
  * @detail	Verifies that the bank is idle or calculates how much tRTP since the last 
  *		read, tWR since the last write, or tRAS time remains.
+ * @param	dimm	Pointer to dimm struct
  * @param	bGroup	The bank group that contains the bank
  * @param	bank	The bank number within the group.
+ * @param	currentTime	The current simulation time
  * @return	0 if the precharge command can be issued. A positive integer if some definite
  *		time remains until precharge can be issued. -1 otherwise.
  */
-int dimm_canPrecharge(int bGroup, int bank);
+int dimm_canPrecharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime);
 
 /**
  * @fn		dimm_precharge

@@ -62,4 +62,18 @@ int group_canActivate(bGroup_t *group, unsigned bank, unsigned long long current
  */
 int group_activate(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
 
+/**
+ * @fn		group_canPrecharge
+ * @brief	Checks if the specified bank can start precharging
+ *
+ * @details	Verifies that the bank is already activated and then checks the time until a
+ *		precharge command can be issued.
+ * @param	group	Pointer to the group struct
+ * @param	bank	Bank number to check
+ * @param	currentTime	Current simulation time
+ * @return	0 if the bank is ready to receive a precharge command. A positive integer showing
+ *		how many CPU clock cycles remain until the bank is ready for a precharge command.
+ *		-2 if a bad argument is passed. -1 if the bank isn't activated.
+ */
+int group_canPrecharge(bGroup_t *group, unsigned bank, unsigned long long currentTime);
 #endif
