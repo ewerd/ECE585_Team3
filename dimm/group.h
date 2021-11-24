@@ -7,7 +7,7 @@
 #include "../wrappers.h"
 
 typedef struct {
-	bank_t*			bank; //Array of banks
+	bank_t**		bank; //Array of banks
 	unsigned		numBanks; //Number of banks in group
 	unsigned long long 	nextActivate; //Time available for next ACT command (tRRD_L)
 	unsigned long long 	nextWrite; //Time available for next write(tCCD_L)
@@ -20,9 +20,9 @@ typedef struct {
  *
  * @param	banks	Number of banks in the group
  * @param	rows	Rows per bank
- * @param	newGroup	Target bank group
+ * @return	Pointer to new group struct
  */
-void group_init(int banks, int rows, bGroup_t *newGroup);
+bGroup_t *group_init(unsigned banks, unsigned rows);
 
 /**
  * @fn		group_deinit

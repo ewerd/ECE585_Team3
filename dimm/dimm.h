@@ -2,7 +2,7 @@
  * @file	dimm.h
  * @brief	Abstraction of a DIMM
  *
- * @detail	DIMM contains 4 bank groups of 4 banks each and 256 rows per bank.
+ * @detail	TODO DIMM contains 4 bank groups of 4 banks each and 256 rows per bank.
  *
  * @date	TODO
  * @authors	TODO
@@ -17,15 +17,12 @@
 
 
 typedef struct {
-	bGroup_t*		group; //Array of groups
+	bGroup_t**		group; //Array of groups
 	unsigned 		numGroups; //Number of groups in the dimm
 	unsigned long long	nextWrite; //Time available for next write(tCCD_S)
 	unsigned long long	nextRead; //Time available for next read(tCCD_S,tWTR_S)
 	unsigned long long	nextActivate; //Time available for next ACT command(tRRD_S)
 } dimm_t;
-
-//My thought is we just copy this format for a bank_group.h and bank.h. Then we'll recursively call
-//those functions from these functions
 
 /**
  * @fn		dimm_init
@@ -37,7 +34,7 @@ typedef struct {
  * @param	rows	Number of rows per bank
  * @returns	Pointer to new dimm_t struct
  */
-dimm_t *dimm_init(int groups, int banks, int rows);
+dimm_t *dimm_init(unsigned groups, unsigned banks, unsigned rows);
 
 
 /**
@@ -60,7 +57,7 @@ void dimm_deinit(dimm_t *dimm);
  *		that is the time remaining if the bank is in the process of precharging.
  *		-1 otherwise.
  */
-int dimm_canActivate(int bGroup, int bank);
+int dimm_canActivate(dimm_t *dimm, unsigned bGroup, unsigned bank);
 
 /**
  * @fn		dimm_activate

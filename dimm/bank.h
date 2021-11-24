@@ -21,7 +21,16 @@ typedef struct {
  *
  * @param	rows	Number of rows in bank
  * @param	newBank	Target bank
+ * @return	Pointer to new bank struct
  */
-void bank_init(unsigned rows, bank_t *newBank);
+bank_t *bank_init(unsigned rows);
+
+/**
+ * @fn		bank_deinit
+ * @brief	Cleans and frees a bank struct
+ *
+ * @param	bank	Target bank to clean
+ */
+void bank_deinit(bank_t *bank);
 
 #endif
