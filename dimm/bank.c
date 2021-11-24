@@ -107,3 +107,24 @@ int bank_precharge(bank_t *bank, unsigned long long currentTime)
 	bank->nextActivate = currentTime + TRP * SCALE_FACTOR;
 	return TRP * SCALE_FACTOR;
 }
+
+int bank_canRead(bank_t *bank, unsigned row, unsigned long long currentTime)
+{
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_canRead(): NULL bank pointer passed.\n");
+		return -2;
+	}
+	if (row >= bank->maxRows)
+	{
+		Fprintf(stderr, "Error in bank.bank_canRead(): Row %u out of bounds. Last row is %u.\n", row, bank->maxRows-1);
+		return -2;
+	}
+
+	if (bank->state != ACTIVE || bank->row != row)
+	{
+		return -1;
+	}
+
+	return (currentTime < bank->nextRead) ? (int)(bank->nextRead-currentTime) : 0;
+}

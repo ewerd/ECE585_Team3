@@ -114,13 +114,16 @@ int dimm_precharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long lo
  *		time remains until that row completes activation. Also will check that the
  *		appopriate amount of time has elapsed since the previous read (CL) or 
  *		write(tWR&tWTR).
- * @param	bGroup	The bank group that contains the bank
+ * @param	dimm	Pointer to the dimm struct
+ * @param	group	The bank group that contains the bank
  * @param	bank	The bank number within the group.
  * @param	row	The row to be read from.
+ * @param	currentTime	The current simulation time
  * @return	0 if the read command can be issued. A positive integer if some definite
- *		time remains until read can be issued. -1 otherwise.
+ *		time remains until read can be issued. -2 if bad arguments are passed.
+ *		-1 otherwise.
  */
-int dimm_canRead(int bGroup, int bank, int row);
+int dimm_canRead(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime);
 
 /**
  * @fn		dimm_read

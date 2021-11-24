@@ -84,11 +84,29 @@ int group_precharge(bGroup_t *group, unsigned bank, unsigned long long currentTi
 {
 	if (group_checkArgs(group, bank) < 0)
 	{
-		Fprintf(stderr, "Error in group.group_canPrecharge(): Bad arguments passed.\n");
+		Fprintf(stderr, "Error in group.group_precharge(): Bad arguments passed.\n");
 		return -2;
 	}
 	
 	return bank_precharge(group->bank[bank], currentTime);
+}
+
+int group_canRead(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime)
+{
+	if (group_checkArgs(group, bank) < 0)
+	{
+		Fprintf(stderr, "Error in group.group_canRead(): Bad arguments passed.\n");
+		return -2;
+	}
+
+	int bankReadTime = bank_canRead(group->bank[bank], row, currentTime);
+	if (bankReadTime < 0)
+	{
+		return bankReadTime;
+	}
+
+	int groupReadTime = (group->nextRead > currentTime) ? group->nextRead - currentTime : 0;
+	return (bankReadTime > groupReadTime) ? bankReadTime : groupReadTime;
 }
 
 /**
