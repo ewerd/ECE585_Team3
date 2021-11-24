@@ -5,7 +5,11 @@
 
 #define TRCD	24
 #define TRAS	52
+#define TCAS	24
+#define TRTP	12
 #define TRP	24
+#define TBURST	4
+#define CWL	20
 
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
@@ -102,5 +106,17 @@ int bank_precharge(bank_t *bank, unsigned long long currentTime);
  *		-2 if the bank is NULL. -1 otherwise.
  */
 int bank_canRead(bank_t *bank, unsigned row, unsigned long long currentTime);
+
+/**
+ * @fn		bank_read
+ * @brief	Issues a read command to the bank
+ *
+ * @param	bank	Pointer to a bank
+ * @param	row	Row to be read from
+ * @param	currentTime	Current simulation time
+ * @return	If successful, time until the read cmd is completed. -2 if bad arguments
+ *		are passed. -1 otherwise
+ */
+int bank_read(bank_t *bank, unsigned row, unsigned long long currentTime);
 
 #endif

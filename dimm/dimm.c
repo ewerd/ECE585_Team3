@@ -59,10 +59,19 @@ int dimm_activate(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
 		return -2;
 	}
 
+	if (currentTime < dimm->nextActivate)
+	{
+		Fprintf(stderr, "Error in dimm.dimm_activate(): Dimm not ready to activate. %llu cycles remain.\n",dimm->nextActivate - currentTime);
+		return -1;
+	}
 	int activateTime = group_activate(dimm->group[group], bank, row, currentTime);
 	if (activateTime > 0)
 	{
 		dimm->nextActivate = currentTime + TRRD_S * SCALE_FACTOR;
+	}
+	else
+	{
+		Fprintf(stderr, "Error in dimm.dimm_activate(): Could not activate group %u.\n", group);
 	}
 	return activateTime;
 }
@@ -85,8 +94,13 @@ int dimm_precharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long lo
 		Fprintf(stderr, "Error in dimm.dimm_precharge(): Bad arguments.\n");
 		return -2;	
 	}
-
-	return group_precharge(dimm->group[group], bank, currentTime);
+	
+	int prechargeTime = group_precharge(dimm->group[group], bank, currentTime);
+	if (prechargeTime < 0)
+	{
+		Fprintf(stderr, "Error in dimm.dimm_precharge(): Unable to precharge group %u.\n", group);
+	}
+	return prechargeTime;
 }
 
 int dimm_canRead(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
@@ -105,6 +119,33 @@ int dimm_canRead(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsi
 	
 	int dimmReadTime = (dimm->nextRead > currentTime) ? dimm->nextRead - currentTime : 0;
 	return (dimmReadTime < groupReadTime) ? groupReadTime : dimmReadTime;
+}
+
+int dimm_read(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
+{
+	if (dimm_checkArgs(dimm, group < 0))
+	{
+		Fprintf(stderr, "Error in dimm.dimm_read(): Bad arguments.\n");
+		return -2;	
+	}
+
+	
+	if (currentTime < dimm->nextActivate)
+	{
+		Fprintf(stderr, "Error in dimm.dimm_read(): Dimm not ready to read. %llu cycles remain.\n",dimm->nextActivate - currentTime);
+		return -1;
+	}
+	int readTime = group_read(dimm->group[group], bank, row, currentTime);
+	if (readTime > 0)
+	{
+		dimm->nextRead = currentTime + TCCD_S * SCALE_FACTOR;
+		dimm->nextWrite = currentTime + TCCD_S * SCALE_FACTOR;
+	}
+	else
+	{
+		Fprintf(stderr, "Error in dimm.dimm_read(): Could not read from group %u.\n", group);
+	}
+	return readTime;
 }
 
 // ------------------------------------------------------Helper Functions-------------------------------------------------------------

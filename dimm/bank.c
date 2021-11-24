@@ -128,3 +128,38 @@ int bank_canRead(bank_t *bank, unsigned row, unsigned long long currentTime)
 
 	return (currentTime < bank->nextRead) ? (int)(bank->nextRead-currentTime) : 0;
 }
+
+int bank_read(bank_t *bank, unsigned row, unsigned long long currentTime)
+{
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_read(): NULL bank pointer passed.\n");
+		return -2;
+	}
+	if (row >= bank->maxRows)
+	{
+		Fprintf(stderr, "Error in bank.bank_read(): Row %u out of bounds. Last row is %u.\n", row, bank->maxRows-1);
+		return -2;
+	}
+
+	if (bank->state != ACTIVE)
+	{
+		Fprintf(stderr, "Error in bank.bank_read(): Bank has not been activated.\n");
+		return -1;
+	}
+	if (bank->row != row)
+	{
+		Fprintf(stderr, "Error in bank.bank_read(): %u is the active row. Cannot read from row %u.\n", bank->row, row);
+		return -1;
+	}
+	if (currentTime < bank->nextRead)
+	{
+		Fprintf(stderr, "Error in bank.bank_read(): Bank is not ready for read command. %llu cycles remain.\n", bank->nextRead - currentTime);
+		return -1;
+	}
+
+	bank->nextWrite = currentTime + (TCAS + TBURST - CWL) * SCALE_FACTOR;
+	unsigned long long rtpTime = currentTime + TRTP * SCALE_FACTOR;
+	bank->nextPrecharge = (bank->nextPrecharge > rtpTime) ? bank->nextPrecharge : rtpTime;
+	return TCAS * SCALE_FACTOR;
+}

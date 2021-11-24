@@ -59,10 +59,19 @@ int group_activate(bGroup_t *group, unsigned bank, unsigned row, unsigned long l
 		return -2;
 	}
 
+	if (currentTime < group->nextActivate)
+	{
+		Fprintf(stderr, "Error in group.group_activate(): Group not ready to activate. %llu cycles remain.\n", group->nextActivate - currentTime);
+		return -1;
+	}
 	int activateTime = bank_activate(group->bank[bank], row, currentTime);
 	if (activateTime > 0)
 	{
 		group->nextActivate = currentTime + TRRD_L * SCALE_FACTOR;
+	}
+	else
+	{
+		Fprintf(stderr, "Error in group.group_activate(): Unable to activate bank %u.\n", bank);
 	}
 	return activateTime;
 }
@@ -88,7 +97,12 @@ int group_precharge(bGroup_t *group, unsigned bank, unsigned long long currentTi
 		return -2;
 	}
 	
-	return bank_precharge(group->bank[bank], currentTime);
+	int prechargeTime = bank_precharge(group->bank[bank], currentTime);
+	if (prechargeTime < 0)
+	{
+		Fprintf(stderr, "Error in group.group_precharge(): Unable to precharge bank %u.\n", bank);
+	}
+	return prechargeTime;
 }
 
 int group_canRead(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime)
@@ -107,6 +121,32 @@ int group_canRead(bGroup_t *group, unsigned bank, unsigned row, unsigned long lo
 
 	int groupReadTime = (group->nextRead > currentTime) ? group->nextRead - currentTime : 0;
 	return (bankReadTime > groupReadTime) ? bankReadTime : groupReadTime;
+}
+
+int group_read(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime)
+{
+	if (group_checkArgs(group, bank) < 0)
+	{
+		Fprintf(stderr, "Error in group.group_read(): Bad arguments passed.\n");
+		return -2;
+	}
+
+	if (currentTime < group->nextRead)
+	{
+		Fprintf(stderr, "Error in group.group_read(): Group not ready to read. %llu cycles remain.\n", group->nextRead - currentTime);
+		return -1;
+	}
+	int readTime = bank_read(group->bank[bank], row, currentTime);
+	if (readTime > 0)
+	{
+		group->nextRead = currentTime + TCCD_L * SCALE_FACTOR;
+		group->nextWrite = currentTime + TCCD_L * SCALE_FACTOR;
+	}
+	else
+	{
+		Fprintf(stderr, "Error in group.group_read(): Unable to read from bank %u.\n", bank);
+	}
+	return readTime;	
 }
 
 /**

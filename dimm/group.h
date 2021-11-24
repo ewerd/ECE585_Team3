@@ -7,6 +7,7 @@
 #include "../wrappers.h"
 
 #define TRRD_L	6
+#define TCCD_L	8
 
 typedef struct {
 	bank_t**		bank; //Array of banks
@@ -105,5 +106,18 @@ int group_precharge(bGroup_t *group, unsigned bank, unsigned long long currentTi
  *		-2 if a bad argument is passed. -1 if the bank isn't activated.
  */
 int group_canRead(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
+
+/**
+ * @fn		group_read
+ * @brief	Reads a column in an activated row in a bank within a bank group
+ *
+ * @param	group	Pointer to a bank group
+ * @param	bank	Bank number that will receive read command
+ * @param	row	Row that will be read from
+ * @param	currentTime	The current simulation time
+ * @param	If read cmd issued successfully, returns time until command is completed. 
+ *		-2 if a bad argument is passed.-1 otherwise.
+ */
+int group_read(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
 
 #endif
