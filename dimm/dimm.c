@@ -138,14 +138,31 @@ int dimm_read(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigne
 	int readTime = group_read(dimm->group[group], bank, row, currentTime);
 	if (readTime > 0)
 	{
-		dimm->nextRead = currentTime + TCCD_S * SCALE_FACTOR;
-		dimm->nextWrite = currentTime + TCCD_S * SCALE_FACTOR;
+		dimm->nextRead = dimm->nextWrite = currentTime + TCCD_S * SCALE_FACTOR;
 	}
 	else
 	{
 		Fprintf(stderr, "Error in dimm.dimm_read(): Could not read from group %u.\n", group);
 	}
 	return readTime;
+}
+
+int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
+{
+	if (dimm_checkArgs(dimm, group < 0))
+	{
+		Fprintf(stderr, "Error in dimm.dimm_canWrite(): Bad arguments.\n");
+		return -2;	
+	}
+
+	int groupWriteTime = group_canWrite(dimm->group[group], bank, row, currentTime);
+	if (groupWriteTime < 0)
+	{
+		return groupWriteTime;
+	}
+	
+	int dimmWriteTime = (dimm->nextWrite > currentTime) ? dimm->nextWrite - currentTime : 0;
+	return (dimmWriteTime < groupWriteTime) ? groupWriteTime : dimmWriteTime;
 }
 
 // ------------------------------------------------------Helper Functions-------------------------------------------------------------

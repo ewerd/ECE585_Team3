@@ -119,4 +119,19 @@ int bank_canRead(bank_t *bank, unsigned row, unsigned long long currentTime);
  */
 int bank_read(bank_t *bank, unsigned row, unsigned long long currentTime);
 
+/**
+ * @fn		bank_canWrite
+ * @brief	Checks if the bank can start a Write
+ *
+ * @details	Verifies that the specified row is already activated and returns time
+ *		until the next write can occur.
+ * @param	bank	Pointer to the bank struct
+ * @param	row	Row that will be written to
+ * @param	currentTime	The current simulation time (in CPU clock cycles)
+ * @return	0 if the row is activated and ready to be written to. A positive integer
+ *		that is the time remaining if the bank is in the process of precharging.
+ *		-2 if the bank is NULL. -1 otherwise.
+ */
+int bank_canWrite(bank_t *bank, unsigned row, unsigned long long currentTime);
+
 #endif

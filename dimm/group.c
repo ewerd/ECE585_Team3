@@ -149,6 +149,24 @@ int group_read(bGroup_t *group, unsigned bank, unsigned row, unsigned long long 
 	return readTime;	
 }
 
+int group_canWrite(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime)
+{
+	if (group_checkArgs(group, bank) < 0)
+	{
+		Fprintf(stderr, "Error in group.group_canWrite(): Bad arguments passed.\n");
+		return -2;
+	}
+
+	int bankWriteTime = bank_canWrite(group->bank[bank], row, currentTime);
+	if (bankWriteTime < 0)
+	{
+		return bankWriteTime;
+	}
+
+	int groupWriteTime = (group->nextWrite > currentTime) ? group->nextWrite - currentTime : 0;
+	return (bankWriteTime > groupWriteTime) ? bankWriteTime : groupWriteTime;
+}
+
 /**
  * @fn		group_checkArgs
  * @brief	Helper function to check if pointer is NULL and bank is within bounds

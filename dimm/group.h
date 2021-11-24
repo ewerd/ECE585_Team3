@@ -120,4 +120,20 @@ int group_canRead(bGroup_t *group, unsigned bank, unsigned row, unsigned long lo
  */
 int group_read(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
 
+/**
+ * @fn		group_canWrite
+ * @brief	Checks if the specified bank can perform a write
+ *
+ * @details	Verifies that the bank has activated the correct row and then checks the time 
+ *		until a Write command can be issued.
+ * @param	group	Pointer to the group struct
+ * @param	bank	Bank number to check
+ * @param	row	Row that should be activated
+ * @param	currentTime	Current simulation time
+ * @return	0 if the bank is ready to receive a write command. A positive integer showing
+ *		how many CPU clock cycles remain until the bank is ready for a write command.
+ *		-2 if a bad argument is passed. -1 if the bank isn't activated.
+ */
+int group_canWrite(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
+
 #endif

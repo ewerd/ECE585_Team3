@@ -163,3 +163,24 @@ int bank_read(bank_t *bank, unsigned row, unsigned long long currentTime)
 	bank->nextPrecharge = (bank->nextPrecharge > rtpTime) ? bank->nextPrecharge : rtpTime;
 	return TCAS * SCALE_FACTOR;
 }
+
+int bank_canWrite(bank_t *bank, unsigned row, unsigned long long currentTime)
+{
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_canWrite(): NULL bank pointer passed.\n");
+		return -2;
+	}
+	if (row >= bank->maxRows)
+	{
+		Fprintf(stderr, "Error in bank.bank_canWrite(): Row %u out of bounds. Last row is %u.\n", row, bank->maxRows-1);
+		return -2;
+	}
+
+	if (bank->state != ACTIVE || bank->row != row)
+	{
+		return -1;
+	}
+
+	return (currentTime < bank->nextWrite) ? (int)(bank->nextWrite-currentTime) : 0;
+}

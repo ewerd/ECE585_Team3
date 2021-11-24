@@ -147,13 +147,16 @@ int dimm_read(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigne
  *
  * @detail	Verifies that the bank has activated the correct row and can write. If not,
  *		calculates the time till activation finishes or previous write completes.
- * @param	bGroup	The bank group that contains the bank
+ * @param	dimm	Pointer to dimm struct
+ * @param	group	The bank group that contains the bank
  * @param	bank	The bank number within the group.
  * @param	row	The row to be written to.
+ * @param	currentTime	Current simulation time
  * @return	0 if the write command can be issued. A positive integer if some definite
- *		time remains until write can be issued. -1 otherwise.
+ *		time remains until write can be issued. -2 if bad arguments are passed.
+ *		-1 otherwise.
  */
-int dimm_canWrite(int bGroup, int bank, int row);
+int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime);
 
 /**
  * @fn		dimm_write
