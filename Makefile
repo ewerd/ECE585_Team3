@@ -5,7 +5,7 @@
 CC = gcc
 CFLAGS = -Wall -std=c99 -g
 OBJS = parser.o mem_queue.o mem_sim.o
-LDFLAGS = -lm
+LDFLAGS = -Wall -lm
 SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c wrappers.c dimm/dimm.c dimm/group.c dimm/bank.c
 HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h dimm/dimm.h dimm/group.h dimm/bank.h
 EXE  = sim.exe
