@@ -51,13 +51,15 @@ void dimm_deinit(dimm_t *dimm);
  *
  * @details	Verifies that the bank is already precharged or is precharging and returns
  *		the time till completion.
+ * @param	dimm	Pointer to the dimm struct
  * @param	bGroup	The bank group that contains the bank.
  * @param	bank	The bank number within the bank group.
+ * @param	currentTime	The current simulation time (in CPU clock cycles)
  * @return	0 if the bank is precharged and ready for activation. A positive integer
  *		that is the time remaining if the bank is in the process of precharging.
- *		-1 otherwise.
+ *		-2 if group or bank is out of bounds. -1 otherwise.
  */
-int dimm_canActivate(dimm_t *dimm, unsigned bGroup, unsigned bank);
+int dimm_canActivate(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime);
 
 /**
  * @fn		dimm_activate

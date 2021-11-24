@@ -27,7 +27,22 @@ void dimm_deinit(dimm_t *dimm)
 	free(dimm);
 }
 
-int dimm_canActivate(dimm_t *dimm, unsigned bGroup, unsigned bank)
+int dimm_canActivate(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime)
 {
-	return 0;
+	//Error checking that bGroup is in range
+	if (group >= dimm->numGroups)
+	{
+		Fprintf(stderr, "Error in dimm.dimm_canActivate(): Group index %u out of bounds.Last group is %u.\n",group,dimm->numGroups-1);
+		return -2;
+	}
+
+	int groupActivateTime = group_canActivate(dimm->group[group],bank,currentTime); //Get time till group ready for ACT
+	if (groupActivateTime < 0) //If group cannot ACT, return error code
+	{
+		return groupActivateTime;
+	}
+
+	int dimmActivateTime = (dimm->nextActivate > currentTime) ? dimm->nextActivate - currentTime : 0;
+	//Return the larger of the two wait times, dimmActivateTime or groupActivate time
+	return (dimmActivateTime > groupActivateTime) ? dimmActivateTime : groupActivateTime;
 }

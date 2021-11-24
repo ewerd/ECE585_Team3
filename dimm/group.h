@@ -32,4 +32,19 @@ bGroup_t *group_init(unsigned banks, unsigned rows);
  */
 void group_deinit(bGroup_t *bankGroup);
 
+/**
+ * @fn		group_canActivate
+ * @brief	Checks if the specified bank can start a row activation
+ *
+ * @details	Verifies that the bank is already precharged or is precharging and returns
+ *		the time till completion.
+ * @param	group	Pointer to the group struct
+ * @param	bank	The bank number within the bank group.
+ * @param	currentTime	The current simulation time (in CPU clock cycles)
+ * @return	0 if the bank is precharged and ready for activation. A positive integer
+ *		that is the time remaining if the bank is in the process of precharging.
+ *		-2 if group or bank is out of bounds. -1 otherwise.
+ */
+int group_canActivate(bGroup_t *group, unsigned bank, unsigned long long currentTime);
+
 #endif

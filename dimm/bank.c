@@ -20,3 +20,14 @@ void bank_deinit(bank_t *bank)
 {
 	free(bank);
 }
+
+int bank_canActivate(bank_t *bank, unsigned long long currentTime)
+{
+	if (bank->state != PRECHARGED) //If the bank is not precharged or precharging
+	{
+		return -1;
+	}
+
+	//If bank isn't done precharging, return time until completed. Otherwise, return 0
+	return (bank->nextActivate > currentTime) ? (int)(bank->nextActivate - currentTime) : 0;
+}
