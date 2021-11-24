@@ -15,6 +15,8 @@
 #include "bank.h"
 #include "../wrappers.h"
 
+#define TRRD_S		4 //Time between row activations in different bank groups
+#define SCALE_FACTOR	2 //Ratio of CPU clock speed to MEM clock speed
 
 typedef struct {
 	bGroup_t**		group; //Array of groups
@@ -66,13 +68,14 @@ int dimm_canActivate(dimm_t *dimm, unsigned group, unsigned bank, unsigned long 
  * @brief	Issues an activate command to a bank
  *
  * @details	Verifies that bank is available for an activate command and then issues it.
- * @param	bGroup	Bank group
+ * @param	dimm	Pointer to dimm receiving command
+ * @param	group	Bank group
  * @param	bank	The bank being activated
  * @param	row	The row to activate
- * @return	0 if the command was issued successfully. Some positive integer if the
- *		command can't be issued yet (see dimm_canActivate()). -1 otherwise.
+ * @return	If the command is issued successfully, returns time(in CPU cycles) until the 
+ *		activate command is completed. -1 otherwise.
  */
-int dimm_activate(int bGroup, int bank, int row);
+int dimm_activate(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime);
 
 /**
  * @fn		dimm_canPrecharge

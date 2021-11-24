@@ -6,6 +6,8 @@
 #include "bank.h"
 #include "../wrappers.h"
 
+#define TRRD_L	6
+
 typedef struct {
 	bank_t**		bank; //Array of banks
 	unsigned		numBanks; //Number of banks in group
@@ -46,5 +48,18 @@ void group_deinit(bGroup_t *bankGroup);
  *		-2 if group or bank is out of bounds. -1 otherwise.
  */
 int group_canActivate(bGroup_t *group, unsigned bank, unsigned long long currentTime);
+
+/**
+ * @fn		group_activate
+ * @brief	Activates a row in a bank in a bank group
+ *
+ * @param	group	Pointer to a bank group
+ * @param	bank	Bank number that will receive ACT command
+ * @param	row	Row that will be activated
+ * @param	currentTime	The current simulation time
+ * @param	If ACT cmd issued successfully, returns time until ACT command is completed. 
+ *		-2 if a bad argument is passed.-1 otherwise.
+ */
+int group_activate(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime);
 
 #endif

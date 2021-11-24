@@ -3,6 +3,9 @@
 #ifndef BANK_H_
 #define BANK_H_
 
+#define TRCD	24
+#define TRAS	52
+
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
 typedef struct {
@@ -46,5 +49,17 @@ void bank_deinit(bank_t *bank);
  *		-2 if group or bank is out of bounds. -1 otherwise.
  */
 int bank_canActivate(bank_t *bank, unsigned long long currentTime);
+
+/**
+ * @fn		bank_activate
+ * @brief	Issues an activate command to the bank
+ *
+ * @param	bank	Pointer to a bank
+ * @param	row	Row to be activated
+ * @param	currentTime	Current simulation time
+ * @return	If successful, time until the ACT cmd is completed. -2 if bad arguments
+ *		are passed. -1 otherwise
+ */
+int bank_activate(bank_t *bank, unsigned row, unsigned long long currentTime);
 
 #endif

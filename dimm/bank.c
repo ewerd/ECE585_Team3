@@ -2,6 +2,7 @@
 
 #include "bank.h"
 #include "../wrappers.h"
+#include "dimm.h"
 
 bank_t *bank_init(unsigned rows)
 {
@@ -23,6 +24,11 @@ void bank_deinit(bank_t *bank)
 
 int bank_canActivate(bank_t *bank, unsigned long long currentTime)
 {
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_canActivate(): NULL bank pointer passed.\n");
+		return -2;
+	}
 	if (bank->state != PRECHARGED) //If the bank is not precharged or precharging
 	{
 		return -1;
@@ -30,4 +36,35 @@ int bank_canActivate(bank_t *bank, unsigned long long currentTime)
 
 	//If bank isn't done precharging, return time until completed. Otherwise, return 0
 	return (bank->nextActivate > currentTime) ? (int)(bank->nextActivate - currentTime) : 0;
+}
+
+int bank_activate(bank_t *bank, unsigned row, unsigned long long currentTime)
+{
+	if (bank == NULL)
+	{
+		Fprintf(stderr, "Error in bank.bank_activate(): NULL bank pointer passed.\n");
+		return -2;
+	}
+	if (row >= bank->maxRows)
+	{
+		Fprintf(stderr, "Error in bank.bank_activate(): Row %u out of bounds. Last row is %u.\n", row, bank->maxRows-1);
+		return -2;
+	}
+	if (bank->state != PRECHARGED)
+	{
+		Fprintf(stderr, "Error in bank.bank_activate(): Bank is not currently precharged and cannot activate.\n");
+		return -1;
+	}
+	if (bank->nextActivate > currentTime)
+	{
+		Fprintf(stderr, "Error in bank.bank_activate(): Bank has not completed precharging. %llu cycles remain.\n", bank->nextActivate-currentTime);
+		return -1;
+	}
+
+	// Legal command, calculate time until next possible commands. Update state and open row.
+	bank->row = row;
+	bank->state = ACTIVE;
+	bank->nextRead = bank->nextWrite = currentTime + TRCD * SCALE_FACTOR;
+	bank->nextPrecharge = currentTime + TRAS * SCALE_FACTOR;
+	return TRCD * SCALE_FACTOR; //Return time till activation complete
 }
