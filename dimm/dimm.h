@@ -16,8 +16,19 @@
 #include "../wrappers.h"
 
 #define TRRD_S		4 //Time between row activations in different bank groups
-#define TCCD_S		4 //Time between reads and writes in different bank groups
-#define TWTR_S		4 //Time after a write burst finishes before a read can be issued
+#define TCCD_S		4 //Time between reads in different bank groups
+#define TWTR_S		4 //Time after a write burst finishes before a read can be issued to another bank group
+#define TRRD_L		6 //Time between row activations in the same bank group
+#define TCCD_L		8 //Time between reads to the same bank group
+#define TWTR_L		12//Time after a write burst finishes before a read can be issued to the same bank group
+#define TRCD		24//Time a bank is activated and a read or write can be issued
+#define TRAS		52//Minimum time between activate and precharge commands to the same bank
+#define TCAS		24//Time after a read command till burst begins
+#define TRTP		12//Time after a read command till a precharge can be issued to the same bank
+#define TRP		24//Time after precharge command till the bank is precharged
+#define TWR		20//Time after a write data burst till a precharged can be issued to the same bank
+#define TBURST		4 //Time from start to finish of data burst
+#define CWL		20//Time from write command until data must be available on bus
 #define SCALE_FACTOR	2 //Ratio of CPU clock speed to MEM clock speed
 
 typedef struct {

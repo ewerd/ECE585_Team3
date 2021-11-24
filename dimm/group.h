@@ -6,10 +6,6 @@
 #include "bank.h"
 #include "../wrappers.h"
 
-#define TRRD_L	6
-#define TCCD_L	8
-#define TWTR_L	12
-
 typedef struct {
 	bank_t**		bank; //Array of banks
 	unsigned		numBanks; //Number of banks in group

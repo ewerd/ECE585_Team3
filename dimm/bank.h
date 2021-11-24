@@ -3,15 +3,6 @@
 #ifndef BANK_H_
 #define BANK_H_
 
-#define TRCD	24
-#define TRAS	52
-#define TCAS	24
-#define TRTP	12
-#define TRP	24
-#define TWR	20
-#define TBURST	4
-#define CWL	20
-
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
 typedef struct {
