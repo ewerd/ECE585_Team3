@@ -6,8 +6,8 @@
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
 typedef struct {
-	int			row; //Track open row (-1 for no open row?)
-	int			maxRows;
+	unsigned int		row; //Track open row 
+	unsigned int		maxRows;
 	bankState_t		state; //Current or target bank state
 	unsigned long long	nextPrecharge; //Time available for next precharge cmd (tRP)
 	unsigned long long	nextActivate; //Time available for next activate cmd (tRCD)
@@ -22,6 +22,6 @@ typedef struct {
  * @param	rows	Number of rows in bank
  * @param	newBank	Target bank
  */
-void bank_init(int rows, bank_t *newBank);
+void bank_init(unsigned rows, bank_t *newBank);
 
 #endif

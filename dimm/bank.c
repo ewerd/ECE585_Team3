@@ -2,7 +2,7 @@
 
 #include "bank.h"
 
-void bank_init(int rows, bank_t *newBank)
+void bank_init(unsigned rows, bank_t *newBank)
 {
 	newBank->maxRows = rows;
 	newBank->row = -1;

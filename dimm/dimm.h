@@ -17,7 +17,8 @@
 
 
 typedef struct {
-	bGroup_t*		group;
+	bGroup_t*		group; //Array of groups
+	unsigned 		numGroups; //Number of groups in the dimm
 	unsigned long long	nextWrite; //Time available for next write(tCCD_S)
 	unsigned long long	nextRead; //Time available for next read(tCCD_S,tWTR_S)
 	unsigned long long	nextActivate; //Time available for next ACT command(tRRD_S)
@@ -37,6 +38,15 @@ typedef struct {
  * @returns	Pointer to new dimm_t struct
  */
 dimm_t *dimm_init(int groups, int banks, int rows);
+
+
+/**
+ * @fn		dimm_deinit
+ * @brief	Frees all dynamic memory used by a dimm_t
+ *
+ * @param	dimm	Target dimm to free
+ */
+void dimm_deinit(dimm_t *dimm);
 
 /**
  * @fn		dimm_canActivate
