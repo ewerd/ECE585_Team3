@@ -24,6 +24,9 @@ dimm_t *dimm_init(unsigned groups, unsigned banks, unsigned rows)
 
 void dimm_deinit(dimm_t *dimm)
 {
+	if (dimm == NULL)
+		return;
+
 	for (unsigned i = 0; i < dimm->numGroups; i++)
 	{
 		group_deinit(dimm->group[i]);

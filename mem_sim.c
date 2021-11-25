@@ -15,10 +15,14 @@
 
 // Parameters
 #define CMD_QUEUE_SIZE	16
+#define BANK_GROUPS	4
+#define BANKS_PER_GROUP	4
+#define ROWS_PER_BANK	32768
 
 /*
  * Helper function declarations.
  */ 
+void initSim();
 char* parseArgs(int argc, char** argv);
 void Printf(char* format, ...);
 void Fprintf(FILE* stream, char* format, ...);
@@ -35,38 +39,13 @@ int updateCommands();
  */
 unsigned long long currentTime;
 queuePtr_t commandQueue;
+queuePtr_t outputBuffer;
 parser_t *parser;
-
+dimm_t* dimm;
 
 int main(int argc, char** argv)
 {
-	//Parse arguments we're passing from on the command line
-	char* inputFile = parseArgs(argc,argv);
-	if (inputFile == NULL)
-	{
-		Fprintf(stderr, "Error in mem_sim: Could not find unique file name in command line arguments\n");
-		return -1;
-	}
-
-	//Init parser
-	parser = initParser(inputFile);
-	if (parser == NULL)
-	{
-		Fprintf(stderr, "Error in mem_sim:Failed to initialize parser.\n");
-		return -1;
-	}
-
-	//Initialize pointer to command line that is used as a go between the parser and the queue
-	
-	//Init queue
-	commandQueue = create_queue(CMD_QUEUE_SIZE);
-	if (commandQueue == NULL)
-	{
-		Fprintf(stderr, "Error in mem_sim: Could not create command queue.\n");
-		return -1;
-	}
-
-	//Init DIMM
+	initSim(); //Init structures
 
 	//Initialize global time variable
 	currentTime = 0;
@@ -158,18 +137,67 @@ int main(int argc, char** argv)
  */
 void garbageCollection()
 {
-	if(commandQueue)
+	clean_queue(commandQueue);
+	clean_queue(outputBuffer);
+	cleanParser(parser);
+	dimm_deinit(dimm);
+}
+
+/**
+ * @fn		initSim
+ * @brief	Initializes all the global pointer in the simulation
+ */
+void initSim()
+{
+	//Parse arguments we're passing from on the command line
+	char* inputFile = parseArgs(argc,argv);
+	if (inputFile == NULL)
 	{
-		while (!is_empty(commandQueue))
-		{
-			free(remove_queue_item(1, commandQueue));
-		}
+		Fprintf(stderr, "Error in mem_sim.initSim(): Could not find unique file name in command line arguments\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//Init parser
+	parser = initParser(inputFile);
+	if (parser == NULL)
+	{
+		Fprintf(stderr, "Error in mem_sim.initSim():Failed to initialize parser.\n");
+		exit(EXIT_FAILURE);
 	}
 	
-	if(parser)
+	//Init queue
+	commandQueue = create_queue(CMD_QUEUE_SIZE);
+	if (commandQueue == NULL)
 	{
-		cleanParser(parser);
+		Fprintf(stderr, "Error in mem_sim.iniSim(): Could not create command queue.\n");
+		goto DEINIT_PARSER;
 	}
+
+	//Init output buffer
+	outputBuffer = create_queue(UINT_MAX);
+	if (outputBuffer == NULL)
+	{
+		Fprintf(stderr, "Error in mem_sim.initSim(): Could not create output buffer.\n");
+		goto DEINIT_CMDQUEUE;
+	}
+
+	//Init DIMM
+	dimm = dimm_init(BANK_GROUPS, BANKS_PER_GROUP, ROWS_PER_BANK);
+	if (dimm == NULL)
+	{
+		Fprintf(stderr, "Error in mem_sim.initSim(): Could not initialize dimm.\n")
+		goto DEINIT_OUTPUTBUFF;
+	}
+
+	return;
+
+	DEINIT_OUTPUTBUFF:
+	clean_queue(outputBuffer);
+	DEINIT_CMD_QUEUE:
+	clean_queue(commandQueue);
+	DEINIT_PARSER:
+	cleanParser(parser);
+	exit(EXIT_FAILURE);
 }
 
 /**

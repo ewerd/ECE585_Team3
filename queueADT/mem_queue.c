@@ -23,20 +23,23 @@ queuePtr_t create_queue(unsigned maxSize)
 	queuePtr_t queue; 
 	
 	// attempt allocation of queue
-	if (!(queue = malloc(sizeof(queue_t))))
+	queue = Malloc(sizeof(queue_t));
+	queue->firstCommand = NULL;
+	queue->size = 0;
+	queue->maxSize = maxSize;
+	return queue;
+}
+
+void clean_queue(queuePtr_t list)
+{
+	if (list == NULL)
+		return;
+
+	while (!isEmpty(list))
 	{
-		#ifdef DEBUG
-		Fprintf(stderr, "\ncreate_queue(): could not allocate space for queue...\n");
-		#endif
-		return NULL;
+		free(remove_queue_item(0,list));
 	}
-	else
-	{
-		queue->firstCommand = NULL;
-		queue->size = 0;
-		queue->maxSize = maxSize;
-		return queue;
-	}
+	free(list);
 }
 
 /**

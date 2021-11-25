@@ -63,6 +63,9 @@ parserPtr_t initParser(char* inputFile)
 
 void cleanParser(parser_t* parser)
 {
+	if (parser == NULL)
+		return;
+
 	if (fclose(parser->filename) != 0)
 	{
 		Fprintf(stderr, "Error in Parser.cleanParser(): Error closing input stream\n");

@@ -54,6 +54,14 @@ typedef struct queue_s
 queuePtr_t create_queue(unsigned maxSize);
 
 /**
+ * @fn		clean_queue
+ * @brief	Frees all memory used by the list
+ *
+ * @param	list	Pointer to a queue_t struct
+ */
+void clean_queue(queuePtr_t list);
+
+/**
 * FUNCTION:			insert_queue_item
 *
 * INFO:				Inserts a provided queue item to the back of a provided queuePtr_t (queue pointer).
