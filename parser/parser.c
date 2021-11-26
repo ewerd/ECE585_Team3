@@ -142,7 +142,7 @@ int prepCommand(parserPtr_t parser)
 
 	parser->nextLine->cpuCycle = time;
 	parser->nextLine->operation = (operation_t)commandInt;
-	parser->nextLine->nextOp = UNKNOWN;
+	parser->nextLine->nextCmd = UNKNOWN;
 	parser->nextLine->address = address;
 	parser->nextLine->rows = address & 0x1FFFC0000 >> 18;
 	parser->nextLine->upperColumns = address & 0x3FC00 >> 10;
@@ -157,7 +157,7 @@ int prepCommand(parserPtr_t parser)
 	#endif
 	return 0;
 }
-
+/*
 parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime)
 {
 	// No more lines
@@ -243,7 +243,7 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 	// If you've made it this far, something has gone wrong
 	Fprintf(stderr, "Error: Reached end of getLine function. Should not be possible.\n");
 	return (parser_state_t) PARSE_ERROR;
-}
+}*/
 
 void printCurrentLine(inputCommandPtr_t currentCommandLine)
 {

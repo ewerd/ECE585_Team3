@@ -10,6 +10,7 @@
 
 #include "./queueADT/mem_queue.h"
 #include "./parser/parser.h"
+#include "./dimm/dimm.h"
 #include <limits.h>
 #include "wrappers.h"
 
@@ -22,7 +23,7 @@
 /*
  * Helper function declarations.
  */ 
-void initSim(void);
+void initSim(int argc, char** argv);
 char* parseArgs(int argc, char** argv);
 void Printf(char* format, ...);
 void Fprintf(FILE* stream, char* format, ...);
@@ -32,8 +33,8 @@ void* queueRemove(queuePtr_t queue, unsigned index);
 unsigned long long advanceTime(void);
 unsigned long long getTimeJump(void);
 int updateCommands(void);
-void sendMemCmd(void);
-int memAccess(inputCommandPtr_t command);
+void serviceCommands(void);
+int sendMemCmd(inputCommandPtr_t command);
 
 /*
  * Global variables
@@ -46,7 +47,7 @@ dimm_t* dimm;
 
 int main(int argc, char** argv)
 {
-	initSim(); //Init structures
+	initSim(argc, argv); //Init structures
 
 	//Initialize global time variable
 	currentTime = 0;
@@ -84,7 +85,7 @@ int main(int argc, char** argv)
 			#ifdef DEBUG
 				Printf("mem_sim: Iterating through queued commands\n");
 			#endif
-			sendMemCmd();
+			serviceCommands();
 		}
 
 		// Advance time. If end conditions met, 0 will be returned.
@@ -134,8 +135,9 @@ void garbageCollection()
 /**
  * @fn		initSim
  * @brief	Initializes all the global pointer in the simulation
+ *
  */
-void initSim()
+void initSim(int argc, char** argv)
 {
 	//Parse arguments we're passing from on the command line
 	char* inputFile = parseArgs(argc,argv);
@@ -173,7 +175,7 @@ void initSim()
 	dimm = dimm_init(BANK_GROUPS, BANKS_PER_GROUP, ROWS_PER_BANK);
 	if (dimm == NULL)
 	{
-		Fprintf(stderr, "Error in mem_sim.initSim(): Could not initialize dimm.\n")
+		Fprintf(stderr, "Error in mem_sim.initSim(): Could not initialize dimm.\n");
 		goto DEINIT_OUTPUTBUFF;
 	}
 
@@ -181,7 +183,7 @@ void initSim()
 
 	DEINIT_OUTPUTBUFF:
 	clean_queue(outputBuffer);
-	DEINIT_CMD_QUEUE:
+	DEINIT_CMDQUEUE:
 	clean_queue(commandQueue);
 	DEINIT_PARSER:
 	cleanParser(parser);
@@ -277,18 +279,22 @@ unsigned long long advanceTime()
 unsigned long long getTimeJump()
 {
 	unsigned long long timeJump = ULLONG_MAX;
-	// Check age of oldest entry in queue
+	// Check for next command that'll be ready
 	if (!is_empty(commandQueue))
 	{
 		#ifdef DEBUG
-			Printf("mem_sim.getTimeJump(): Checking age of oldest command in queue\n");
+			Printf("mem_sim.getTimeJump(): Checking age of commands in queue\n");
 		#endif
-		timeJump = getAge(1, commandQueue);
+		for (unsigned i = 1; i <= commandQueue->size; i++)
+		{
+			int cmdTimeRemaining = getAge(i, commandQueue);
+			timeJump = (cmdTimeRemaining < timeJump) ? cmdTimeRemaining : timeJump;
+		}
+
 		if (timeJump < 1)
 			timeJump = 1;
-
 		#ifdef DEBUG
-			Printf("mem_sim.getTimeJump(): Age of oldest command is %llu, setting time jump to %llu\n", getAge(1, commandQueue), timeJump);
+			Printf("mem_sim.getTimeJump(): Next command finishes in %llu\n", timeJump);
 		#endif
 	}
 	#ifdef DEBUG
@@ -411,7 +417,7 @@ char* parseArgs(int argc, char** argv)
 	return fileName;
 }
 			
-void sendMemCmd()
+void serviceCommands()
 {
 	// FOR EACH command in the queue:
 	for (unsigned i = 1; i <= commandQueue->size; i++)
@@ -422,12 +428,17 @@ void sendMemCmd()
 				Printf("mem_sim: Servicing command at index %d\n",i);
 			#endif
 			inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
-			if (command->nextMemCmd == UNKNOWN || command->nextMemCmd == ACCESS)
+			if (command->nextCmd == REMOVE)
 			{
-				int newAge = memAccess(command);
+				free(remove_queue_item(i, commandQueue));
+				i--;
+			}
+			else
+			{
+				int newAge = sendMemCmd(command);
 				if (newAge < 0)
 				{
-					Fprintf(stderr, "Error in mem_sim.sendMemCmd(): Failed memory access.\n");
+					Fprintf(stderr, "Error in mem_sim.serviceCommands(): Failed memory access.\n");
 					garbageCollection();
 					exit(EXIT_FAILURE);
 				}
@@ -444,25 +455,67 @@ void sendMemCmd()
 	}
 }
 
-int memAccess(inputCommandPtr_t command)
+int sendMemCmd(inputCommandPtr_t command)
 {
-	int retVal = (command->operation == WRITE) ? 
-		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
-		dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+	int retVal = -1;
+	switch(command->nextCmd)
+	{
+		case ACCESS:
+		case UNKNOWN:
+			retVal = (command->operation == WRITE) ? 
+				dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
+				dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			break;
+		case ACTIVATE:
+			retVal = dimm_canActivate(dimm, command->bankGroups, command->banks, currentTime);
+			break;
+		case PRECHARGE:
+			retVal = dimm_canPrecharge(dimm, command->bankGroups, command->banks, currentTime);
+			break;
+		default:break;
+	}
 	if (retVal == -2)
 	{
 		goto BAD_ARGS;
 	}
 	if (retVal == -1)
 	{
-		command->nextMemCmd = ACTIVATE;
+		switch(command->nextCmd)
+		{
+			case ACCESS:
+			case UNKNOWN:
+				command->nextCmd = ACTIVATE;
+				break;
+			case ACTIVATE:
+				command->nextCmd = PRECHARGE;
+				break;
+			case PRECHARGE:
+				command->nextCmd = ACCESS;
+				break;
+			default:
+				command->nextCmd = UNKNOWN;
+				break;
+		}
 		return 0;
 	}
 	if (retVal == 0)
 	{
-		int retVal = (command->operation == WRITE) ? 
-			dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
-			dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+		switch(command->nextCmd)
+		{
+			case ACCESS:
+			case UNKNOWN:
+				retVal = (command->operation == WRITE) ? 
+					dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
+					dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+				break;
+			case ACTIVATE:
+				retVal = dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+				break;
+			case PRECHARGE:
+				retVal = dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
+				break;
+			default: break;
+		}
 	}
 	if (retVal == -2)
 	{
@@ -470,17 +523,25 @@ int memAccess(inputCommandPtr_t command)
 	}
 	if (retVal > 0)
 	{
-		command->nextMemCmd = DONE;
+		switch(command->nextCmd)
+		{
+			case ACCESS:
+			case UNKNOWN:
+				command->nextCmd = REMOVE;
+				break;
+			case ACTIVATE:
+				command->nextCmd = ACCESS;
+				break;
+			case PRECHARGE:
+				command->nextCmd = ACTIVATE;
+				break;
+			default: break;
+		}
 	}
 	return retVal;
 
-	BADARGS:
-	Fprintf(stderr, "Error in mem_sim.memAccess(): Bad arguments passed.\n");
+	BAD_ARGS:
+	Fprintf(stderr, "Error in mem_sim.sendMemCmd(): Bad arguments passed.\n");
 	garbageCollection();
 	exit(EXIT_FAILURE);
-}
-
-int read(inputCommandPtr_t command)
-{
-	int retVal = dimm_read
 }

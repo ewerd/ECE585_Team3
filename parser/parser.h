@@ -146,7 +146,7 @@ int prepCommand(parserPtr_t parser);
 					ENDOFFILE 	- There are not more lines to get. We are at the end of the file.
 					
 */
-parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime);
+//parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime);
 
 const char* getCommandString(operation_t command);
 const char* getParserState(parser_state_t state);
