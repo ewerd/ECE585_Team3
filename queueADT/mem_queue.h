@@ -94,7 +94,7 @@ void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue);
 *
 * RETURNS:			Pointer to peaked at item
 */
-void *peak_queue_item(int index, queuePtr_t queue);
+void *peak_queue_item(unsigned index, queuePtr_t queue);
 
 /**
  * @fn		getAge

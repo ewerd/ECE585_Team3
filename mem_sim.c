@@ -22,17 +22,18 @@
 /*
  * Helper function declarations.
  */ 
-void initSim();
+void initSim(void);
 char* parseArgs(int argc, char** argv);
 void Printf(char* format, ...);
 void Fprintf(FILE* stream, char* format, ...);
 inputCommandPtr_t peakCommand(int index);
-void printRemoval(inputCommandPtr_t item);
 void garbageCollection(void);
 void* queueRemove(queuePtr_t queue, unsigned index);
-unsigned long long advanceTime();
-unsigned long long getTimeJump();
-int updateCommands();
+unsigned long long advanceTime(void);
+unsigned long long getTimeJump(void);
+int updateCommands(void);
+void sendMemCmd(void);
+int memAccess(inputCommandPtr_t command);
 
 /*
  * Global variables
@@ -77,26 +78,13 @@ int main(int argc, char** argv)
 			garbageCollection();
 			return -1;
 		}
-
-		//TODO this will turn into a scan to find commands that have waited tCL and tBURST since their read/write
-		//     was issued
-		#ifdef DEBUG
-			Printf("mem_sim: Scanning age of commands in queue\n");
-		#endif
-		// FOR EACH command in the queue:
-		for (int i = 1; i <= commandQueue->size; i++)
-		{	
-			// IF its age is >= 100, remove it and print output message
-			if (getAge(i, commandQueue) == 0)
-			{
-				#ifdef DEBUG
-					Printf("mem_sim: Found old entry at index %d with age %llu\n",i,getAge(i,commandQueue));
-				#endif
-				printRemoval(peakCommand(i));
-				void* oldEntry = queueRemove(commandQueue, i);
-				free(oldEntry);
-				i--;
-			}
+		
+		if (currentTime % 2 == 0)
+		{
+			#ifdef DEBUG
+				Printf("mem_sim: Iterating through queued commands\n");
+			#endif
+			sendMemCmd();
 		}
 
 		// Advance time. If end conditions met, 0 will be returned.
@@ -225,6 +213,7 @@ int updateCommands()
 	//If the pointer isn't NULL, add the command to the command queue
 	if (currentCommandLine != NULL)
 	{
+
 		#ifdef DEBUG
 			Printf("mem_sim.updateCommands():Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
 		#endif
@@ -234,10 +223,6 @@ int updateCommands()
 			Fprintf(stderr,"Error in mem_sim.updateCommands(): Failed to insert command into command queue.\n");
 			return -1;
 		}
-		#ifdef DEBUG
-			Printf("mem_sim.updateCommands():Setting age of new command to 100.\n");
-		#endif
-		setAge(commandQueue->size, 100, commandQueue);
 	}
 	return 0;
 }
@@ -351,12 +336,6 @@ void* queueRemove(queuePtr_t queue, unsigned index)
 	return oldItem;
 }
 
-void printRemoval(inputCommandPtr_t item)
-{
-	Printf("\nAt time %llu, removed the following command:\n", currentTime);
-	Printf("Trace Time:%llu, Command:%s, Addr:0x%llX\n",item->cpuCycle, getCommandString(item->command), item->address);
-}
-
 /**
  * @fn		peakCommand
  * @brief	Wrapper function for peaking at items in the command queue
@@ -430,4 +409,78 @@ char* parseArgs(int argc, char** argv)
 	}
 
 	return fileName;
+}
+			
+void sendMemCmd()
+{
+	// FOR EACH command in the queue:
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{	
+		if (getAge(i, commandQueue) == 0)
+		{
+			#ifdef DEBUG
+				Printf("mem_sim: Servicing command at index %d\n",i);
+			#endif
+			inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
+			if (command->nextMemCmd == UNKNOWN || command->nextMemCmd == ACCESS)
+			{
+				int newAge = memAccess(command);
+				if (newAge < 0)
+				{
+					Fprintf(stderr, "Error in mem_sim.sendMemCmd(): Failed memory access.\n");
+					garbageCollection();
+					exit(EXIT_FAILURE);
+				}
+				else if (newAge == 0)
+				{
+					i--;
+				}
+				else
+				{
+					setAge(i, newAge, commandQueue);
+				}
+			}
+		}
+	}
+}
+
+int memAccess(inputCommandPtr_t command)
+{
+	int retVal = (command->operation == WRITE) ? 
+		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
+		dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+	if (retVal == -2)
+	{
+		goto BAD_ARGS;
+	}
+	if (retVal == -1)
+	{
+		command->nextMemCmd = ACTIVATE;
+		return 0;
+	}
+	if (retVal == 0)
+	{
+		int retVal = (command->operation == WRITE) ? 
+			dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
+			dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+	}
+	if (retVal == -2)
+	{
+		goto BAD_ARGS;
+	}
+	if (retVal > 0)
+	{
+		command->nextMemCmd = DONE;
+	}
+	return retVal;
+
+	BADARGS:
+	Fprintf(stderr, "Error in mem_sim.memAccess(): Bad arguments passed.\n");
+	garbageCollection();
+	exit(EXIT_FAILURE);
+}
+
+int read(inputCommandPtr_t command)
+{
+	int retVal = dimm_read
 }

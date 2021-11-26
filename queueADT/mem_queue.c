@@ -70,7 +70,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, void *item)
 	}
 
 	// variables:
-	queueItemPtr_t queueItem = newNode(item, ULLONG_MAX);
+	queueItemPtr_t queueItem = newNode(item, 0);
 
 	// determine if queue is empty
 	if (queue->firstCommand == NULL)
@@ -194,16 +194,16 @@ void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue)
 	return item;
 }
 
-void* peak_queue_item(int index, queuePtr_t queue)
+void* peak_queue_item(unsigned index, queuePtr_t queue)
 {
 	#ifdef DEBUG
-		Printf("Queue: Peaking at queue index %d. Size is %d\n", index, queue->size);
+		Printf("Queue: Peaking at queue index %u. Size is %d\n", index, queue->size);
 	#endif
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
 
 	// go through queue and age each queue item
-	for (int x = 1; x <= queue->size; x++)
+	for (unsigned x = 1; x <= queue->size; x++)
 	{
 		// index found, return pointer to queueItem
 		if (x == index)
@@ -216,7 +216,7 @@ void* peak_queue_item(int index, queuePtr_t queue)
 	}
 
 	#ifdef DEBUG
-		Printf("Queue: Index %d is not in queue\n", index);
+		Printf("Queue: Index %u is not in queue\n", index);
 	#endif
 	
 	// If index not found, return NULL pointer

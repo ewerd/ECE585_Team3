@@ -141,7 +141,8 @@ int prepCommand(parserPtr_t parser)
 	parser->nextLine = Malloc(sizeof(inputCommand_t));
 
 	parser->nextLine->cpuCycle = time;
-	parser->nextLine->command = (operation_t)commandInt;
+	parser->nextLine->operation = (operation_t)commandInt;
+	parser->nextLine->nextOp = UNKNOWN;
 	parser->nextLine->address = address;
 	parser->nextLine->rows = address & 0x1FFFC0000 >> 18;
 	parser->nextLine->upperColumns = address & 0x3FC00 >> 10;
@@ -246,7 +247,7 @@ parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigne
 
 void printCurrentLine(inputCommandPtr_t currentCommandLine)
 {
-	Printf("PARSER, Completed Parsing Line: Time = %10llu, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommandString(currentCommandLine->command), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
+	Printf("PARSER, Completed Parsing Line: Time = %10llu, Command Attempt = %6s, Address = 0x%010llX, Row = %5u, Upper Column = %3u, Bank = %2u, Bank Group = %1u, Lower Column = %1u, Byte Select = %1u\n", currentCommandLine->cpuCycle, getCommandString(currentCommandLine->operation), currentCommandLine->address, currentCommandLine->rows, currentCommandLine->upperColumns, currentCommandLine->banks, currentCommandLine->bankGroups, currentCommandLine->lowerColumns, currentCommandLine->byteSelect); 
 }
 
 const char* getCommandString(operation_t command)
