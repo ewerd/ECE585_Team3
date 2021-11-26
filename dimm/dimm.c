@@ -108,7 +108,7 @@ int dimm_precharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long lo
 
 int dimm_canRead(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
 {
-	if (dimm_checkArgs(dimm, group < 0))
+	if (dimm_checkArgs(dimm, group) < 0)
 	{
 		Fprintf(stderr, "Error in dimm.dimm_canRead(): Bad arguments.\n");
 		return -2;	
