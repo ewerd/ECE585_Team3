@@ -144,12 +144,12 @@ int prepCommand(parserPtr_t parser)
 	parser->nextLine->operation = (operation_t)commandInt;
 	parser->nextLine->nextCmd = UNKNOWN;
 	parser->nextLine->address = address;
-	parser->nextLine->rows = address & 0x1FFFC0000 >> 18;
-	parser->nextLine->upperColumns = address & 0x3FC00 >> 10;
-	parser->nextLine->banks = address & 0x300 >> 8;
-	parser->nextLine->bankGroups = address & 0xC0 >> 6;
-	parser->nextLine->lowerColumns = address & 0x38 >> 3;
-	parser->nextLine->byteSelect = address & 0x7;
+	parser->nextLine->rows = (address & 0x1FFFC0000) >> 18;
+	parser->nextLine->upperColumns = (address & 0x3FC00) >> 10;
+	parser->nextLine->banks = (address & 0x300) >> 8;
+	parser->nextLine->bankGroups = (address & 0xC0) >> 6;
+	parser->nextLine->lowerColumns = (address & 0x38) >> 3;
+	parser->nextLine->byteSelect = (address & 0x7);
 	parser->nextLineTime = time;
 	parser->lineState = READY;
 	#ifdef DEBUG
