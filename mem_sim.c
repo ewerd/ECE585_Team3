@@ -430,7 +430,7 @@ void serviceCommands()
 			inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
 			if (command->nextCmd == REMOVE)
 			{
-				free(remove_queue_item(i, commandQueue));
+				free(queueRemove(commandQueue,i));
 				i--;
 			}
 			else
@@ -449,6 +449,7 @@ void serviceCommands()
 				else
 				{
 					setAge(i, newAge, commandQueue);
+					return;
 				}
 			}
 		}
@@ -457,7 +458,7 @@ void serviceCommands()
 
 int sendMemCmd(inputCommandPtr_t command)
 {
-	int retVal = -1;
+	int retVal = -3;
 	switch(command->nextCmd)
 	{
 		case ACCESS:
@@ -474,11 +475,11 @@ int sendMemCmd(inputCommandPtr_t command)
 			break;
 		default:break;
 	}
-	if (retVal == -2)
+	if (retVal == -2)//Bad arguments passed. Print error message
 	{
 		goto BAD_ARGS;
 	}
-	if (retVal == -1)
+	else if (retVal == -1)//The dimm isn't in the correct state for this command, change requested command
 	{
 		switch(command->nextCmd)
 		{
@@ -498,25 +499,39 @@ int sendMemCmd(inputCommandPtr_t command)
 		}
 		return 0;
 	}
-	if (retVal == 0)
+	else if (retVal != 0) //The memory is busy, return time until it's ready for this command
+	{
+		return retVal;
+	}
+	else //retVal == 0 so the memory command can be issued
 	{
 		switch(command->nextCmd)
 		{
 			case ACCESS:
 			case UNKNOWN:
-				retVal = (command->operation == WRITE) ? 
-					dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
-					dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+				if (command->operation == WRITE)
+				{
+					Printf("%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+					retVal = dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+				}
+				else
+				{
+					Printf("%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+					retVal = dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+				}
 				break;
 			case ACTIVATE:
+				Printf("%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
 				retVal = dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 				break;
 			case PRECHARGE:
+				Printf("%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
 				retVal = dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
 				break;
 			default: break;
 		}
 	}
+
 	if (retVal == -2)
 	{
 		goto BAD_ARGS;
