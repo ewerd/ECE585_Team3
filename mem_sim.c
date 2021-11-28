@@ -409,15 +409,16 @@ char* parseArgs(int argc, char** argv)
 			
 void serviceCommands()
 {
+	bool bankGroupTouched[4] = {false, false, false, false};
 	// FOR EACH command in the queue:
 	for (unsigned i = 1; i <= commandQueue->size; i++)
-	{	
-		if (getAge(i, commandQueue) == 0)
+	{
+		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
+		if (bankGroupTouched[command->bankGroups] == false && getAge(i, commandQueue) == 0)
 		{
 			#ifdef DEBUG
 				Printf("mem_sim: Servicing command at index %d\n",i);
 			#endif
-			inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
 			if (command->nextCmd == REMOVE)
 			{
 				free(queueRemove(commandQueue,i));
@@ -432,13 +433,11 @@ void serviceCommands()
 					garbageCollection();
 					exit(EXIT_FAILURE);
 				}
-				else
-				{
-					setAge(i, newAge, commandQueue);
-					return;
-				}
+				setAge(i, newAge, commandQueue);
+				return;
 			}
 		}
+		bankGroupTouched[command->bankGroups] = true;
 	}
 }
 
