@@ -142,7 +142,7 @@ int prepCommand(parserPtr_t parser)
 
 	parser->nextLine->cpuCycle = time;
 	parser->nextLine->operation = (operation_t)commandInt;
-	parser->nextLine->nextCmd = UNKNOWN;
+	parser->nextLine->nextCmd = ACCESS;
 	parser->nextLine->address = address;
 	parser->nextLine->rows = (address & 0x1FFFC0000) >> 18;
 	parser->nextLine->upperColumns = (address & 0x3FC00) >> 10;
@@ -157,93 +157,6 @@ int prepCommand(parserPtr_t parser)
 	#endif
 	return 0;
 }
-/*
-parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime)
-{
-	// No more lines
-	if (parser->lineState == ENDOFFILE)
-	{
-		return (parser_state_t) ENDOFFILE;
-	}
-	else if (parser->lineState == FUTURE)
-	{ // Line currently stored in parser, but for a future time.
-		// Check to see if it is no longer a future line
-		if (parser->nextLineTime <= currentTime)
-		{
-			parser->lineState = READY;
-			newCommand = parser->nextLine;
-			return (parser_state_t) VALID;
-		}
-		else {
-			return (parser_state_t) FUTURE;
-		}
-	}
-	else if ((parser->lineState == READY) || (parser->lineState == PARSE_ERROR))
-	{
-		// Already read in the line, or there was an error reading in another line, read in another line
-		// Simulator has received the previous line
-		char inputLine[128];
-		
-		if (fgets(inputLine, 128, parser->filename) == NULL)
-		{ // Returns ENDOFFILE if it reaches the end of the file
-			return (parser_state_t) ENDOFFILE;
-		}
-		else 
-		{
-			// Not end of file
-			
-			int numFields;
-			unsigned commandInt;
-			inputCommandPtr_t nextCommand;
-			
-			// Allocate memory for next line
-			nextCommand = Malloc(sizeof(inputCommand_t));	
-			
-			numFields = sscanf(inputLine, " %llu %d %llx\n", &(nextCommand->cpuCycle), &commandInt, &(nextCommand->address));
-			
-			
-			if (numFields != 3)
-			{
-				Fprintf(stderr,"Error, incorrect number of fields parsed from file.\nThis line: ");
-				Fprintf(stderr,"%s", inputLine);
-				return (parser_state_t) PARSE_ERROR;
-			}
-			
-			nextCommand->command		= (operation_t) commandInt;
-			nextCommand->rows 			= (nextCommand->address & 0x1FFFC0000) >> 18;
-			nextCommand->upperColumns 	= (nextCommand->address & 0x3FC00) >> 10;
-			nextCommand->banks 			= (nextCommand->address & 0x300) >> 8;
-			nextCommand->bankGroups		= (nextCommand->address & 0xC0) >> 6;
-			nextCommand->lowerColumns	= (nextCommand->address & 0x38) >> 3;
-			nextCommand->byteSelect 	=  nextCommand->address & 0x7;
-			
-			#ifdef DEBUG
-				printCurrentLine(nextCommand);
-			#endif
-			
-			if (nextCommand->cpuCycle > currentTime)
-			{
-				// Command is for the future
-				parser->nextLine 		= nextCommand;
-				parser->nextLineTime 	= nextCommand->cpuCycle;
-				parser->lineState 		= FUTURE;
-				return (parser_state_t) FUTURE;
-			}
-			else
-			{
-				// Command is valid now, tell simulator and return the command line
-				parser->nextLineTime 	= nextCommand->cpuCycle;
-				newCommand 				= nextCommand;
-				parser->lineState 		= READY;
-				return (parser_state_t) VALID;
-			}
-		}
-	}
-	
-	// If you've made it this far, something has gone wrong
-	Fprintf(stderr, "Error: Reached end of getLine function. Should not be possible.\n");
-	return (parser_state_t) PARSE_ERROR;
-}*/
 
 void printCurrentLine(inputCommandPtr_t currentCommandLine)
 {
