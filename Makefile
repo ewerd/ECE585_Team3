@@ -22,6 +22,9 @@ mem_queue.o : queueADT/mem_queue.c queueADT/mem_queue.h
 parser.o : parser/parser.c parser/parser.h
 	$(CC) $(CFLAGS) -c parser/parser.c
 
+verbose : $(OBJS)
+	$(CC) $(CFLAGS) -DVERBOSE -o $(EXE) $(SRC)
+
 # -DDEBUG will define DEBUG and recompile everything with DEBUG symbols enabled
 debug : $(OBJS)
 	$(CC) $(CFLAGS) -DDEBUG -o $(EXE) $(SRC)

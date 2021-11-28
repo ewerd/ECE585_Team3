@@ -36,6 +36,11 @@ int updateCommands(void);
 void serviceCommands(void);
 int sendMemCmd(inputCommandPtr_t command);
 
+#ifdef VERBOSE
+void writeOutput(char* message, unsigned long long delay);
+void printOutput(void);
+#endif
+
 /*
  * Global variables
  */
@@ -87,6 +92,10 @@ int main(int argc, char** argv)
 			#endif
 			serviceCommands();
 		}
+		
+		#ifdef VERBOSE
+		printOutput();
+		#endif
 
 		// Advance time. If end conditions met, 0 will be returned.
 		if (advanceTime() == 0)
@@ -99,25 +108,6 @@ int main(int argc, char** argv)
 	garbageCollection();
 	
 	return 0; //End
-	
-	//***********************************************************************************************
-
-	// Everything below here are notes for final implementation
-
-	//While queue isn't empty, ping parser for available requests at current time
-	//Add each line to back of queue
-
-	//For basic implementation, get bank group, bank, row of top request
-
-	//Ask DIMM if that bank group and bank are ready for a command
-	//Determine what next command should be and issue it to DIMM
-	//If data is ready, remove request from queue and...print message? Check project description for what needs to happen
-
-	//Determine time until DIMM is ready for next command
-	//Determine time until next request arrives from parser
-	//Advance time by the smaller of the two times
-
-	//Loop back to start of MOL
 }
 
 /**
@@ -442,10 +432,6 @@ void serviceCommands()
 					garbageCollection();
 					exit(EXIT_FAILURE);
 				}
-				else if (newAge == 0)
-				{
-					i--;
-				}
 				else
 				{
 					setAge(i, newAge, commandQueue);
@@ -458,105 +444,55 @@ void serviceCommands()
 
 int sendMemCmd(inputCommandPtr_t command)
 {
-	int retVal = -3;
-	switch(command->nextCmd)
+	int retVal = (command->operation == WRITE) ? 
+		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
+		dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+	if (retVal == 0)
 	{
-		case ACCESS:
-		case UNKNOWN:
-			retVal = (command->operation == WRITE) ? 
-				dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
-				dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
-			break;
-		case ACTIVATE:
-			retVal = dimm_canActivate(dimm, command->bankGroups, command->banks, currentTime);
-			break;
-		case PRECHARGE:
-			retVal = dimm_canPrecharge(dimm, command->bankGroups, command->banks, currentTime);
-			break;
-		default:break;
-	}
-	if (retVal == -2)//Bad arguments passed. Print error message
-	{
-		goto BAD_ARGS;
-	}
-	else if (retVal == -1)//The dimm isn't in the correct state for this command, change requested command
-	{
-		switch(command->nextCmd)
+		command->nextCmd = REMOVE;
+		if (command->operation == WRITE)
 		{
-			case ACCESS:
-			case UNKNOWN:
-				command->nextCmd = ACTIVATE;
-				break;
-			case ACTIVATE:
-				command->nextCmd = PRECHARGE;
-				break;
-			case PRECHARGE:
-				command->nextCmd = ACCESS;
-				break;
-			default:
-				command->nextCmd = UNKNOWN;
-				break;
+			Printf("%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			return dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
-		return 0;
-	}
-	else if (retVal != 0) //The memory is busy, return time until it's ready for this command
-	{
-		return retVal;
-	}
-	else //retVal == 0 so the memory command can be issued
-	{
-		switch(command->nextCmd)
+		else
 		{
-			case ACCESS:
-			case UNKNOWN:
-				if (command->operation == WRITE)
-				{
-					Printf("%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-					retVal = dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
-				}
-				else
-				{
-					Printf("%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-					retVal = dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
-				}
-				break;
-			case ACTIVATE:
-				Printf("%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
-				retVal = dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
-				break;
-			case PRECHARGE:
-				Printf("%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
-				retVal = dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
-				break;
-			default: break;
+			Printf("%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			return dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
 	}
-
-	if (retVal == -2)
+	if (retVal == -1)
+		retVal = dimm_canActivate(dimm, command->bankGroups, command->banks, currentTime);
+	if (retVal == 0)
 	{
-		goto BAD_ARGS;
+		Printf("%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
+		return dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 	}
-	if (retVal > 0)
+	if (retVal == -1)
+		retVal = dimm_canPrecharge(dimm, command->bankGroups, command->banks, currentTime);
+	if (retVal == 0)
 	{
-		switch(command->nextCmd)
-		{
-			case ACCESS:
-			case UNKNOWN:
-				command->nextCmd = REMOVE;
-				break;
-			case ACTIVATE:
-				command->nextCmd = ACCESS;
-				break;
-			case PRECHARGE:
-				command->nextCmd = ACTIVATE;
-				break;
-			default: break;
-		}
+		Printf("%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
+		return dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
 	}
 	return retVal;
-
-	BAD_ARGS:
-	Fprintf(stderr, "Error in mem_sim.sendMemCmd(): Bad arguments passed.\n");
-	garbageCollection();
-	exit(EXIT_FAILURE);
 }
+
+#ifdef VERBOSE
+void writeOutput(char* message, unsigned long long delay)
+{
+	char* entry = Malloc((strlen(message)+1)*sizeof(char));
+	strcpy(entry, message);
+	sorted_insert_queue(entry, delay, outputBuffer);
+}
+
+void printOutput(void)
+{
+	while (getAge(1, outputBuffer) <= currentTime)
+	{
+		char* output = (char*)queueRemove(outputBuffer, 1);
+		Printf("%'4llu : %s\n", currentTime, output);
+		free(output);
+	}
+}
+#endif
