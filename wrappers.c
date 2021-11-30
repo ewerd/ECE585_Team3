@@ -9,6 +9,7 @@
 
 void Printf(char* format, ...)
 {
+
 	va_list args;
 	va_start (args, format);
 	int result = vprintf(format, args);
@@ -26,6 +27,20 @@ void Fprintf(FILE* stream, char* format, ...)
 	va_list args;
 	va_start (args, format);
 	int result = vfprintf(stream, format, args);
+	va_end(args);
+
+	if (result < 0) //If the print was not successful, alert user via stderr and exit
+	{
+		perror("Error calling fprintf()");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void OUTPUT(FILE* output_file, char* format, ...)
+{
+	va_list args;
+	va_start (args, format);
+	int result = vfprintf(output_file, format, args);
 	va_end(args);
 
 	if (result < 0) //If the print was not successful, alert user via stderr and exit

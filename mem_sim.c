@@ -27,6 +27,7 @@ void initSim(int argc, char** argv);
 char* parseArgs(int argc, char** argv);
 void Printf(char* format, ...);
 void Fprintf(FILE* stream, char* format, ...);
+void OUTPUT(FILE* output_file, char* format, ...);
 inputCommandPtr_t peakCommand(int index);
 void garbageCollection(void);
 void* queueRemove(queuePtr_t queue, unsigned index);
@@ -49,6 +50,7 @@ queuePtr_t commandQueue;
 queuePtr_t outputBuffer;
 parser_t *parser;
 dimm_t* dimm;
+FILE *output_file; 
 
 int main(int argc, char** argv)
 {
@@ -57,6 +59,8 @@ int main(int argc, char** argv)
 	//Initialize global time variable
 	currentTime = 0;
 	
+	output_file = fopen("output.txt", "w");
+
 	#ifdef DEBUG
 	Printf("mem_sim: Completed initializations. Starting simulation.\n");
 	#endif
@@ -236,6 +240,7 @@ unsigned long long advanceTime()
 	if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
 	{
 		Printf("At time %llu, last command removed from queue. Ending simulation.\n", currentTime);
+		fclose(output_file);
 		return 0;
 	}
 
@@ -452,11 +457,13 @@ int sendMemCmd(inputCommandPtr_t command)
 		if (command->operation == WRITE)
 		{
 			Printf("%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			OUTPUT(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
 			return dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
 		else
 		{
 			Printf("%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			OUTPUT(output_file,"%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
 			return dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
 	}
@@ -465,6 +472,7 @@ int sendMemCmd(inputCommandPtr_t command)
 	if (retVal == 0)
 	{
 		Printf("%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
+		OUTPUT(output_file, "%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
 		return dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 	}
 	if (retVal == -1)
@@ -472,6 +480,7 @@ int sendMemCmd(inputCommandPtr_t command)
 	if (retVal == 0)
 	{
 		Printf("%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
+		OUTPUT(output_file, "%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
 		return dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
 	}
 	return retVal;
