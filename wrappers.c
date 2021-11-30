@@ -32,21 +32,6 @@ void Fprintf(FILE* stream, char* format, ...)
 
 	if (result < 0) //If the print was not successful, alert user via stderr and exit
 	{
-		perror("Error calling OUTPUT()");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void OUTPUT(char* format, ...)
-{
-	extern FILE* output_file; 
-	va_list args;
-	va_start (args, format);
-	int result = vfprintf(output_file, format, args);
-	va_end(args);
-
-	if (result < 0) //If the print was not successful, alert user via stderr and exit
-	{
 		perror("Error calling fprintf()");
 		exit(EXIT_FAILURE);
 	}
