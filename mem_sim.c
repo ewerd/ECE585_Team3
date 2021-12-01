@@ -15,30 +15,30 @@
 #include "wrappers.h"
 
 // Parameters
-#define CMD_QUEUE_SIZE	16
-#define BANK_GROUPS	4
-#define BANKS_PER_GROUP	4
-#define ROWS_PER_BANK	32768
+#define CMD_QUEUE_SIZE 16
+#define BANK_GROUPS 4
+#define BANKS_PER_GROUP 4
+#define ROWS_PER_BANK 32768
 
 /*
  * Helper function declarations.
- */ 
-void initSim(int argc, char** argv);
-char* parseArgs(int argc, char** argv);
-//void Printf(char* format, ...);
-//void Fprintf(FILE* stream, char* format, ...);
-//void OUTPUT(char* format, ...);
+ */
+void initSim(int argc, char **argv);
+char *parseArgs(int argc, char **argv);
+// void Printf(char* format, ...);
+// void Fprintf(FILE* stream, char* format, ...);
+// void OUTPUT(char* format, ...);
 inputCommandPtr_t peakCommand(int index);
 void garbageCollection(void);
-void* queueRemove(queuePtr_t queue, unsigned index);
+void *queueRemove(queuePtr_t queue, unsigned index);
 unsigned long long advanceTime(void);
 unsigned long long getTimeJump(void);
 int updateCommands(void);
 void serviceCommands(void);
-int sendMemCmd(inputCommandPtr_t command);
+int sendMemCmd(inputCommandPtr_t command, bool *cmdSent);
 
 #ifdef VERBOSE
-void writeOutput(char* message, unsigned long long delay);
+void writeOutput(char *message, unsigned long long delay);
 void printOutput(void);
 #endif
 
@@ -49,69 +49,69 @@ unsigned long long currentTime;
 queuePtr_t commandQueue;
 queuePtr_t outputBuffer;
 parser_t *parser;
-dimm_t* dimm;
-FILE *output_file; 
+dimm_t *dimm;
+FILE *output_file;
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-	initSim(argc, argv); //Init structures
+	initSim(argc, argv); // Init structures
 
-	//Initialize global time variable
+	// Initialize global time variable
 	currentTime = 0;
-	
-	output_file = fopen("output.txt", "w");
 
-	#ifdef DEBUG
+	// output_file = fopen("output.txt", "w");
+
+#ifdef DEBUG
 	Printf("mem_sim: Completed initializations. Starting simulation.\n");
-	#endif
+#endif
 
-	//Main operating loop
-	while(1)
+	// Main operating loop
+	while (1)
 	{
-		#ifdef DEBUG
-			Printf("*************************************************************************\n");
-			Printf("mem_sim: Top of operating loop. Status is as follows:\n");
-			Printf("Current Time: %llu\n", currentTime);
-			Printf("State of parser: %s\n", getParserState(parser->lineState));
-			Printf("Size of command Queue: %d\n", commandQueue->size);
-			if (!is_empty(commandQueue))
-			{
-				Printf("Printing command queue:\n");
-				print_queue(commandQueue, 1, true);
-			}
-		#endif
-		
-		//Update command queue
+#ifdef DEBUG
+		Printf("*************************************************************************\n");
+		Printf("mem_sim: Top of operating loop. Status is as follows:\n");
+		Printf("Current Time: %llu\n", currentTime);
+		Printf("State of parser: %s\n", getParserState(parser->lineState));
+		Printf("Size of command Queue: %d\n", commandQueue->size);
+		if (!is_empty(commandQueue))
+		{
+			Printf("Printing command queue:\n");
+			print_queue(commandQueue, 1, true);
+		}
+#endif
+
+		// Update command queue
 		if (updateCommands() != 0)
 		{
 			Fprintf(stderr, "Error in mem_sim: Failed updating command queue.\n");
 			garbageCollection();
 			return -1;
 		}
-		
+
 		if (currentTime % 2 == 0)
 		{
-			#ifdef DEBUG
-				Printf("mem_sim: Iterating through queued commands\n");
-			#endif
+#ifdef DEBUG
+			Printf("mem_sim: Iterating through queued commands\n");
+#endif
 			serviceCommands();
 		}
-		
-		#ifdef VERBOSE
+
+#ifdef VERBOSE
 		printOutput();
-		#endif
+#endif
 
 		// Advance time. If end conditions met, 0 will be returned.
 		if (advanceTime() == 0)
 		{
-			break; //Simulation complete, exit while loop
+			break; // Simulation complete, exit while loop
 		}
-	}//End MOL
+	} // End MOL
 
 	// garbage collection for queue and parser
 	garbageCollection();
-	
-	return 0; //End
+
+	return 0; // End
 }
 
 /**
@@ -131,25 +131,25 @@ void garbageCollection()
  * @brief	Initializes all the global pointer in the simulation
  *
  */
-void initSim(int argc, char** argv)
+void initSim(int argc, char **argv)
 {
-	//Parse arguments we're passing from on the command line
-	char* inputFile = parseArgs(argc,argv);
+	// Parse arguments we're passing from on the command line
+	char *inputFile = parseArgs(argc, argv);
 	if (inputFile == NULL)
 	{
 		Fprintf(stderr, "Error in mem_sim.initSim(): Could not find unique file name in command line arguments\n");
 		exit(EXIT_FAILURE);
 	}
 
-	//Init parser
+	// Init parser
 	parser = initParser(inputFile);
 	if (parser == NULL)
 	{
 		Fprintf(stderr, "Error in mem_sim.initSim():Failed to initialize parser.\n");
 		exit(EXIT_FAILURE);
 	}
-	
-	//Init queue
+
+	// Init queue
 	commandQueue = create_queue(CMD_QUEUE_SIZE);
 	if (commandQueue == NULL)
 	{
@@ -157,7 +157,7 @@ void initSim(int argc, char** argv)
 		goto DEINIT_PARSER;
 	}
 
-	//Init output buffer
+	// Init output buffer
 	outputBuffer = create_queue(UINT_MAX);
 	if (outputBuffer == NULL)
 	{
@@ -165,7 +165,7 @@ void initSim(int argc, char** argv)
 		goto DEINIT_CMDQUEUE;
 	}
 
-	//Init DIMM
+	// Init DIMM
 	dimm = dimm_init(BANK_GROUPS, BANKS_PER_GROUP, ROWS_PER_BANK);
 	if (dimm == NULL)
 	{
@@ -175,11 +175,11 @@ void initSim(int argc, char** argv)
 
 	return;
 
-	DEINIT_OUTPUTBUFF:
+DEINIT_OUTPUTBUFF:
 	clean_queue(outputBuffer);
-	DEINIT_CMDQUEUE:
+DEINIT_CMDQUEUE:
 	clean_queue(commandQueue);
-	DEINIT_PARSER:
+DEINIT_PARSER:
 	cleanParser(parser);
 	exit(EXIT_FAILURE);
 }
@@ -200,23 +200,23 @@ int updateCommands()
 	}
 
 	// If the command queue isn't full and the parser hasn't reached EOF
-	//Ask parser for next command at the current time
+	// Ask parser for next command at the current time
 	inputCommandPtr_t currentCommandLine = getCommand(parser, currentTime);
-	#ifdef DEBUG
-		Printf("mem_sim.updateCommands(): Checked parser for new command.\n");
-	#endif
+#ifdef DEBUG
+	Printf("mem_sim.updateCommands(): Checked parser for new command.\n");
+#endif
 
-	//If the pointer isn't NULL, add the command to the command queue
+	// If the pointer isn't NULL, add the command to the command queue
 	if (currentCommandLine != NULL)
 	{
 
-		#ifdef DEBUG
-			Printf("mem_sim.updateCommands():Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
-		#endif
+#ifdef DEBUG
+		Printf("mem_sim.updateCommands():Adding command at trace time %llu to command queue.\n", currentCommandLine->cpuCycle);
+#endif
 		// Current command line is ready for the current time to be added to the queue
-		if(insert_queue_item(commandQueue, (void*)currentCommandLine) == NULL)
+		if (insert_queue_item(commandQueue, (void *)currentCommandLine) == NULL)
 		{
-			Fprintf(stderr,"Error in mem_sim.updateCommands(): Failed to insert command into command queue.\n");
+			Fprintf(stderr, "Error in mem_sim.updateCommands(): Failed to insert command into command queue.\n");
 			return -1;
 		}
 	}
@@ -244,9 +244,9 @@ unsigned long long advanceTime()
 		return 0;
 	}
 
-	#ifdef DEBUG
-		Printf("mem_sim.advanceTime(): Time jump will be %llu\n", timeJump);
-	#endif
+#ifdef DEBUG
+	Printf("mem_sim.advanceTime(): Time jump will be %llu\n", timeJump);
+#endif
 	// Check if the time jump would take us past the limit of the simulation
 	if (currentTime + timeJump < currentTime)
 	{
@@ -255,9 +255,9 @@ unsigned long long advanceTime()
 	}
 	// Advance current time by that calculated time
 	currentTime += timeJump;
-	#ifdef DEBUG
-		Printf("mem_sim.advanceTime(): Aging command queue\n");
-	#endif
+#ifdef DEBUG
+	Printf("mem_sim.advanceTime(): Aging command queue\n");
+#endif
 	// Age items in queue by time advanced
 	age_queue(commandQueue, timeJump);
 	return timeJump;
@@ -277,9 +277,9 @@ unsigned long long getTimeJump()
 	// Check for next command that'll be ready
 	if (!is_empty(commandQueue))
 	{
-		#ifdef DEBUG
-			Printf("mem_sim.getTimeJump(): Checking age of commands in queue\n");
-		#endif
+#ifdef DEBUG
+		Printf("mem_sim.getTimeJump(): Checking age of commands in queue\n");
+#endif
 		for (unsigned i = 1; i <= commandQueue->size; i++)
 		{
 			int cmdTimeRemaining = getAge(i, commandQueue);
@@ -288,27 +288,27 @@ unsigned long long getTimeJump()
 
 		if (timeJump < 1)
 			timeJump = 1;
-		#ifdef DEBUG
-			Printf("mem_sim.getTimeJump(): Next command finishes in %llu\n", timeJump);
-		#endif
+#ifdef DEBUG
+		Printf("mem_sim.getTimeJump(): Next command finishes in %llu\n", timeJump);
+#endif
 	}
-	#ifdef DEBUG
-		Printf("mem_sim.getTimeJump(): Parser line state = %s\n", getParserState(parser->lineState));
-	#endif
+#ifdef DEBUG
+	Printf("mem_sim.getTimeJump(): Parser line state = %s\n", getParserState(parser->lineState));
+#endif
 	// Ask parser when next command arrives (this would be nice but not required by saturday)
 	if (parser->lineState != ENDOFFILE && !is_full(commandQueue))
 	{
-		#ifdef DEBUG
-			Printf("mem_sim.getTimeJump(): Time of next line is %llu\n", parser->nextLineTime);
-		#endif
-		if (parser->nextLineTime <= currentTime) //If we have a backlog of commands
+#ifdef DEBUG
+		Printf("mem_sim.getTimeJump(): Time of next line is %llu\n", parser->nextLineTime);
+#endif
+		if (parser->nextLineTime <= currentTime) // If we have a backlog of commands
 		{
-			timeJump = 1; //Time must advance by at least one
+			timeJump = 1; // Time must advance by at least one
 		}
 		else
 		{
 			// Determine which of the previous two times is smaller
-			timeJump = (timeJump < (parser->nextLineTime-currentTime)) ? timeJump : (parser->nextLineTime-currentTime);
+			timeJump = (timeJump < (parser->nextLineTime - currentTime)) ? timeJump : (parser->nextLineTime - currentTime);
 		}
 	}
 	return timeJump;
@@ -324,12 +324,12 @@ unsigned long long getTimeJump()
  * @param	index	Location  of item in queue to be removed (starts at 1)
  * @returns	Pointer to the item removed from the queue.
  */
-void* queueRemove(queuePtr_t queue, unsigned index)
+void *queueRemove(queuePtr_t queue, unsigned index)
 {
-	#ifdef DEBUG
-		Printf("mem_sim:Removing item from queue at index %u\n",index);
-	#endif
-	void* oldItem = remove_queue_item(index, queue);
+#ifdef DEBUG
+	Printf("mem_sim:Removing item from queue at index %u\n", index);
+#endif
+	void *oldItem = remove_queue_item(index, queue);
 	if (oldItem == NULL)
 	{
 		Fprintf(stderr, "Error in mem_sim: Failed to remove item from at queue at index %u\n", index);
@@ -370,13 +370,15 @@ inputCommandPtr_t peakCommand(int index)
  * 			argument string
  * @return	Pointer to a string containing the input file name. NULL if no input file was provided
  */
-char* parseArgs(int argc, char** argv)
+char *parseArgs(int argc, char **argv)
 {
-	char* fileName = NULL;
+	char *fileName = NULL;
+	char *outFile = NULL;
+	bool out_flag = false; 
 
-	for (int i = 1; i < argc; i++) //For each string in argv
+	for (int i = 1; i < argc; i++) // For each string in argv
 	{
-		//Once we add flags they can go here like this example
+		// Once we add flags they can go here like this example
 		/*
 		if (!strcmp(argv[i], "-step")) //If the -step flag is asserted
 		{
@@ -389,7 +391,7 @@ char* parseArgs(int argc, char** argv)
 				expectedNumber("step", argv[i+1]); //If no number follows, alert user. Default to 1.
 		}
 		*/
-		if (argv[i][0] != '-')
+		if ((argv[i][0] != '-') && i == 1)
 		{
 			if (fileName == NULL)
 			{
@@ -397,12 +399,44 @@ char* parseArgs(int argc, char** argv)
 			}
 			else
 			{
-				Printf("Error in mem_sim: Multiple input file names provided:\n%s\n%s\n",fileName,argv[i]);
+				Printf("Error in mem_sim: Multiple input file names provided:\n%s\n%s\n", fileName, argv[i]);
 				return NULL;
 			}
 		}
-	} // End of parsing arguments
-
+		if (!strcmp(argv[i], "-o")) // If the -out flag is asserted
+		{
+			if (i + 1 < argc) //makes sure we won't go out of bounds in strstr
+			{
+				if (strstr(argv[i + 1], ".txt") != NULL)  // Verify the user specified a filename
+				{
+					
+					outFile = argv[i + 1];
+					output_file = fopen(outFile, "w");
+					Printf("Output file flag detected. File Format Correct. Print to %s\n", outFile);
+				}
+				else
+				{	
+					
+					output_file = fopen("output.txt", "w");
+					Printf("Output file flag detected. File Format Not Correct. Defualt to 'output.txt'\n");
+				}
+			}
+			else
+			{
+				
+				output_file = fopen("output.txt", "w");
+				Printf("Output file flag detected. File name not provided. Defualt to 'output.txt'\n");
+			}
+			out_flag = true; 
+		}
+		
+		if(!out_flag && i == argc -1)
+			{
+				
+				output_file = stdout; 
+				Printf("Output file flag NOT detected. Printing to stdout\n\n");
+			}
+	}
 	// Check bounds on parameters and assert defaults and/or print error messages
 	if (fileName == NULL)
 	{
@@ -411,7 +445,7 @@ char* parseArgs(int argc, char** argv)
 
 	return fileName;
 }
-			
+
 void serviceCommands()
 {
 	bool bankGroupTouched[4] = {false, false, false, false};
@@ -422,12 +456,12 @@ void serviceCommands()
 		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
 		if (bankGroupTouched[command->bankGroups] == false && getAge(i, commandQueue) == 0)
 		{
-			#ifdef DEBUG
-				Printf("mem_sim: Servicing command at index %d\n",i);
-			#endif
+#ifdef DEBUG
+			Printf("mem_sim: Servicing command at index %d\n", i);
+#endif
 			if (command->nextCmd == REMOVE)
 			{
-				free(queueRemove(commandQueue,i));
+				free(queueRemove(commandQueue, i));
 				i--;
 			}
 			else
@@ -439,30 +473,28 @@ void serviceCommands()
 					garbageCollection();
 					exit(EXIT_FAILURE);
 				}
-				setAge(i, newAge, commandQueue);	
+				setAge(i, newAge, commandQueue);
 			}
 		}
 		bankGroupTouched[command->bankGroups] = true;
 	}
 }
 
-int sendMemCmd(inputCommandPtr_t command, bool* cmdSent)
+int sendMemCmd(inputCommandPtr_t command, bool *cmdSent)
 {
-	int retVal = (command->operation == WRITE) ? 
-		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
-		dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+	int retVal = (command->operation == WRITE) ? dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) : dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 	if (retVal == 0)
 	{
 		command->nextCmd = REMOVE;
 		if (command->operation == WRITE)
 		{
-			Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns) << 3) + command->lowerColumns);
 			*cmdSent = true;
 			return dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
 		else
 		{
-			Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns) << 3) + command->lowerColumns);
 			*cmdSent = true;
 			return dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
@@ -487,9 +519,9 @@ int sendMemCmd(inputCommandPtr_t command, bool* cmdSent)
 }
 
 #ifdef VERBOSE
-void writeOutput(char* message, unsigned long long delay)
+void writeOutput(char *message, unsigned long long delay)
 {
-	char* entry = Malloc((strlen(message)+1)*sizeof(char));
+	char *entry = Malloc((strlen(message) + 1) * sizeof(char));
 	strcpy(entry, message);
 	sorted_insert_queue(entry, delay, outputBuffer);
 }
@@ -498,7 +530,7 @@ void printOutput(void)
 {
 	while (getAge(1, outputBuffer) <= currentTime)
 	{
-		char* output = (char*)queueRemove(outputBuffer, 1);
+		char *output = (char *)queueRemove(outputBuffer, 1);
 		Printf("%'4llu : %s\n", currentTime, output);
 		free(output);
 	}
