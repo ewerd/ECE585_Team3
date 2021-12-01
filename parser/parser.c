@@ -174,6 +174,18 @@ const char* getCommandString(operation_t command)
    return "ERROR";
 }
 
+const char* nextCmdToString(memCmd_t cmd)
+{
+	switch(cmd)
+	{
+		case ACCESS: return "ACCESS";
+		case ACTIVATE: return "ACTIVATE";
+		case PRECHARGE: return "PRECHARGE";
+		case REMOVE: return "REMOVE";
+	}
+	return "nextCmd NOT SET";
+}
+
 const char* getParserState(parser_state_t state)
 {
 	switch(state)

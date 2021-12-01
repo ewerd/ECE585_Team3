@@ -13,7 +13,7 @@ MemoryController.h
 
 // Define Operation Enum
 typedef enum _operation_e { READ, WRITE, IFETCH } operation_t;
-typedef enum {REMOVE, ACCESS} memCmd_t;
+typedef enum {REMOVE, ACCESS, ACTIVATE, PRECHARGE} memCmd_t;
 
 // Struct for memory access command from trace file
 typedef struct _cpu_command_s 
@@ -149,6 +149,7 @@ int prepCommand(parserPtr_t parser);
 //parser_state_t getLine(parserPtr_t parser, inputCommandPtr_t newCommand, unsigned long long currentTime);
 
 const char* getCommandString(operation_t command);
+const char* nextCmdToString(memCmd_t cmd);
 const char* getParserState(parser_state_t state);
 
 #endif
