@@ -25,9 +25,6 @@
  */ 
 void initSim(int argc, char** argv);
 char* parseArgs(int argc, char** argv);
-//void Printf(char* format, ...);
-//void Fprintf(FILE* stream, char* format, ...);
-//void OUTPUT(char* format, ...);
 inputCommandPtr_t peakCommand(int index);
 void garbageCollection(void);
 void* queueRemove(queuePtr_t queue, unsigned index);
@@ -35,7 +32,10 @@ unsigned long long advanceTime(void);
 unsigned long long getTimeJump(void);
 int updateCommands(void);
 void serviceCommands(void);
+bool inOrderExecution(bool* cmdsRdy);
 int sendMemCmd(inputCommandPtr_t command);
+unsigned scanCommands(bool* cmdsRdy);
+int updateCmdState(inputCommandPtr_t command);
 
 #ifdef VERBOSE
 void writeOutput(char* message, unsigned long long delay);
@@ -96,7 +96,13 @@ int main(int argc, char** argv)
 			#endif
 			serviceCommands();
 		}
-		
+		#ifdef DEBUG
+		if (!is_empty(commandQueue))
+		{
+			Printf("mem_sim: commandQueue after updating commands:\n");	
+			print_queue(commandQueue, 1, true);
+		}
+		#endif
 		#ifdef VERBOSE
 		printOutput();
 		#endif
@@ -332,7 +338,7 @@ void* queueRemove(queuePtr_t queue, unsigned index)
 	void* oldItem = remove_queue_item(index, queue);
 	if (oldItem == NULL)
 	{
-		Fprintf(stderr, "Error in mem_sim: Failed to remove item from at queue at index %u\n", index);
+		Fprintf(stderr, "Error in mem_sim.queueRemove(): Failed to remove item from queue at index %u\n", index);
 	}
 	return oldItem;
 }
@@ -382,7 +388,7 @@ char* parseArgs(int argc, char** argv)
 		{
 			if (isNumber(argv[i+1])) //Verify the user specified a number after flag
 			{
-				i++;
+				i++; //Step over next argument since we're using it for this
 				timestep = strtoull(argv[i], 0, 0);
 			}
 			else
@@ -406,84 +412,213 @@ char* parseArgs(int argc, char** argv)
 	// Check bounds on parameters and assert defaults and/or print error messages
 	if (fileName == NULL)
 	{
-		Printf("Error in mem_sim: No input file name provided.\n");
+		Fprintf(stderr, "Error in mem_sim: No input file name provided.\n");
 	}
 
 	return fileName;
 }
-			
+
+/**
+ * @fn		serviceCommands
+ * @brief	Determines and issues commands to the DIMM for the current clock cycle
+ *
+ * @detail	Updates the state of memory requests in the commandQueue and then calls
+ *		the scheduling function to determine which command, if any, should be
+ *		issued to the DIMM.
+ */
 void serviceCommands()
 {
+	bool cmdsRdy[commandQueue->size];
+	unsigned numRdyCmds = scanCommands(cmdsRdy);
+	#ifdef DEBUG
+		Printf("mem_sim.serviceCommands(): %u command(s) ready\n", numRdyCmds);
+		Printf("mem_sim.serviceCommands(): cmdsRdy array:\n[");
+		for (int i = 1; i <= commandQueue->size; i++)
+		{
+			if (cmdsRdy[i-1])
+				Printf("t");
+			else
+				Printf("f");
+			if (i != commandQueue->size)
+				Printf("\t");
+		}
+		Printf("]\n");
+	#endif
+	if (numRdyCmds > 0)
+	{
+		inOrderExecution(cmdsRdy);
+		//More scheduling functions can be called here if out of order execution is desired
+	}
+}
+
+/**
+ * @fn		inOrderExecution
+ * @brief	Sends command to DIMM with a schedule for in order execution
+ *
+ * @detail	Determines which command, if any, should be issued to the DIMM this clock tick
+ * @param	cmdsRdy	An array of bools. A true value means that the corresponding command at the same index
+ *			in the commandQueue is ready to be serviced by the DIMM.
+ * @return	True if a command is issued to the DIMM. False otherwise.
+ */
+bool inOrderExecution(bool* cmdsRdy)
+{
 	bool bankGroupTouched[4] = {false, false, false, false};
-	bool cmdSent = false;
 	// FOR EACH command in the queue:
 	for (unsigned i = 1; i <= commandQueue->size; i++)
 	{
 		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
-		if (bankGroupTouched[command->bankGroups] == false && getAge(i, commandQueue) == 0)
+		if (command->nextCmd != REMOVE)//Ignore commands that are just waiting for data. We're done with them
 		{
-			#ifdef DEBUG
-				Printf("mem_sim: Servicing command at index %d\n",i);
-			#endif
-			if (command->nextCmd == REMOVE)
+			if (bankGroupTouched[command->bankGroups] == false && cmdsRdy[i-1] == true)
+			{
+				#ifdef DEBUG
+					Printf("mem_sim: Servicing command at index %d\n",i);
+				#endif
+				setAge(i, sendMemCmd(command), commandQueue);
+				return true;
+			}
+			bankGroupTouched[command->bankGroups] = true;
+		}
+	}
+	return false;
+}
+
+/**
+ * @fn		sendMemCmd
+ * @brief	Sends a command to the DRAM
+ *
+ * @detail	Depending on the commands nextCmd member, issues a command to the DRAM
+ * @param	command	The memory request being serviced.
+ * @return	A positive integer representing the CPU clock cycles until the command is completed.
+ * @warning	Warning: Passing a command to this function that the DIMM is not ready to handle will
+ *		likely result in prematurely ending the simulation on an error. See scanCommands()
+ *		and updateCmdState()
+ */
+int sendMemCmd(inputCommandPtr_t command)
+{
+	int retVal;
+	switch(command->nextCmd)
+	{
+		case ACCESS:
+			command->nextCmd = REMOVE;
+			if (command->operation == WRITE)
+			{
+				Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+				retVal = dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			}
+			else
+			{
+				Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+				retVal = dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			}
+			break;
+		case ACTIVATE:
+			command->nextCmd = ACCESS;
+			Fprintf(output_file, "%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
+			retVal = dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			break;
+		case PRECHARGE:
+			command->nextCmd = ACTIVATE;
+			Fprintf(output_file, "%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
+			retVal = dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
+			break;
+		default:
+			retVal = -1;
+	}
+	if (retVal > 0)
+		return retVal;
+
+	Fprintf(stderr, "Error in mem_sim.sendMemCmd(): Invalid command serviced. retVal = %d\n", retVal);
+	garbageCollection();
+	exit(EXIT_FAILURE);
+}
+
+/**
+ * @fn		scanCommands
+ * @brief	Updates the state of all requests in the command queue
+ *
+ * @detail	Updates the age (time until next action required) and next DRAM command (ACCESS, ACTIVATE, PRECHARGE, or
+ *		REMOVE(from queue)) for each memory request in the command queue. Updates the array of bools to reflect
+ *		which requests can be serviced this clock cycle. A value of true in cmdsRdy[x] indicates that the
+ *		request in the command queue at index 'x' is ready to have a DRAM command issued.
+ * @param	cmdsRdy	Array of bools updated to true if the request in the command queue at the same index is ready
+ *			for a DRAM command to be issued. False otherwise
+ * @return	Number of requests in the command queue that are ready to be serviced with a DRAM command
+ */
+unsigned scanCommands(bool* cmdsRdy)
+{
+	unsigned numCmdsRdy = 0;
+	for (int i = 1; i <= commandQueue->size; i++)
+	{
+		cmdsRdy[i-1] = false;
+		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
+		if (command->nextCmd == REMOVE) 
+		{
+			if (getAge(i, commandQueue) == 0)
 			{
 				free(queueRemove(commandQueue,i));
 				i--;
 			}
-			else
-			{
-				int newAge = sendMemCmd(command, &cmdSent);
-				if (newAge < 0)
-				{
-					Fprintf(stderr, "Error in mem_sim.serviceCommands(): Failed memory access.\n");
-					garbageCollection();
-					exit(EXIT_FAILURE);
-				}
-				setAge(i, newAge, commandQueue);	
-			}
-		}
-		bankGroupTouched[command->bankGroups] = true;
-	}
-}
-
-int sendMemCmd(inputCommandPtr_t command, bool* cmdSent)
-{
-	int retVal = (command->operation == WRITE) ? 
-		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
-		dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
-	if (retVal == 0)
-	{
-		command->nextCmd = REMOVE;
-		if (command->operation == WRITE)
-		{
-			Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-			*cmdSent = true;
-			return dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
 		else
 		{
-			Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-			*cmdSent = true;
-			return dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			int newAge = updateCmdState(command);
+			setAge(i, newAge, commandQueue);
+			#ifdef DEBUG
+				Printf("mem_sim: Command %u updated. nextCmd: %s, Age: %d\n", i, nextCmdToString(command->nextCmd), newAge);
+			#endif
+			if (newAge == 0)
+			{
+				#ifdef DEBUG
+				Printf("mem_sim.scanCommands(): Command %d ready.\n", i);
+				#endif
+				cmdsRdy[i-1] = true;
+				numCmdsRdy++;
+			}
 		}
 	}
-	if (retVal == -1)
-		retVal = dimm_canActivate(dimm, command->bankGroups, command->banks, currentTime);
-	if (retVal == 0)
+	return numCmdsRdy;
+}
+
+/**
+ * @fn		updateCmdState
+ * @brief	Updates an input command's next desired DRAM command and the time till it can be issued
+ *
+ * @param	command	Target command being updated
+ * @return	0 if the command is ready to be serviced. A positive integer representing the number of CPU clock ticks until
+ *		the command will be ready.
+ */
+int updateCmdState(inputCommandPtr_t command)
+{		
+	int timeTillCmd = (command->operation == WRITE) ?	
+		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
+		dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+	if (timeTillCmd >= 0)
 	{
-		Fprintf(output_file, "%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
-		*cmdSent = true;
-		return dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+		command->nextCmd = ACCESS;
+		return timeTillCmd;
 	}
-	if (retVal == -1)
-		retVal = dimm_canPrecharge(dimm, command->bankGroups, command->banks, currentTime);
-	if (retVal == 0)
+	if (timeTillCmd == -1)
 	{
-		Fprintf(output_file, "%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
-		*cmdSent = true;
-		return dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
+		timeTillCmd = dimm_canActivate(dimm, command->bankGroups, command->banks, currentTime);
 	}
-	return retVal;
+	if (timeTillCmd >= 0)
+	{
+		command->nextCmd = ACTIVATE;
+		return timeTillCmd;
+	}
+	if (timeTillCmd == -1)
+	{
+		timeTillCmd = dimm_canPrecharge(dimm, command->bankGroups, command->banks, currentTime);
+	}
+	if (timeTillCmd >= 0)
+	{
+		command->nextCmd = PRECHARGE;
+		return timeTillCmd;
+	}
+	Fprintf(stderr, "Error in mem_sim.updateCmdState(): Ended function with error code of %d.\n", timeTillCmd);
+	garbageCollection();
+	exit(EXIT_FAILURE);
 }
 
 #ifdef VERBOSE
