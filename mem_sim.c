@@ -25,9 +25,9 @@
  */ 
 void initSim(int argc, char** argv);
 char* parseArgs(int argc, char** argv);
-void Printf(char* format, ...);
-void Fprintf(FILE* stream, char* format, ...);
-void OUTPUT(char* format, ...);
+//void Printf(char* format, ...);
+//void Fprintf(FILE* stream, char* format, ...);
+//void OUTPUT(char* format, ...);
 inputCommandPtr_t peakCommand(int index);
 void garbageCollection(void);
 void* queueRemove(queuePtr_t queue, unsigned index);
@@ -415,6 +415,7 @@ char* parseArgs(int argc, char** argv)
 void serviceCommands()
 {
 	bool bankGroupTouched[4] = {false, false, false, false};
+	bool cmdSent = false;
 	// FOR EACH command in the queue:
 	for (unsigned i = 1; i <= commandQueue->size; i++)
 	{
@@ -431,22 +432,21 @@ void serviceCommands()
 			}
 			else
 			{
-				int newAge = sendMemCmd(command);
+				int newAge = sendMemCmd(command, &cmdSent);
 				if (newAge < 0)
 				{
 					Fprintf(stderr, "Error in mem_sim.serviceCommands(): Failed memory access.\n");
 					garbageCollection();
 					exit(EXIT_FAILURE);
 				}
-				setAge(i, newAge, commandQueue);
-				return;
+				setAge(i, newAge, commandQueue);	
 			}
 		}
 		bankGroupTouched[command->bankGroups] = true;
 	}
 }
 
-int sendMemCmd(inputCommandPtr_t command)
+int sendMemCmd(inputCommandPtr_t command, bool* cmdSent)
 {
 	int retVal = (command->operation == WRITE) ? 
 		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
@@ -456,14 +456,14 @@ int sendMemCmd(inputCommandPtr_t command)
 		command->nextCmd = REMOVE;
 		if (command->operation == WRITE)
 		{
-			Printf("%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-			OUTPUT("%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			*cmdSent = true;
 			return dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
 		else
 		{
-			Printf("%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-			OUTPUT("%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			*cmdSent = true;
 			return dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 		}
 	}
@@ -471,16 +471,16 @@ int sendMemCmd(inputCommandPtr_t command)
 		retVal = dimm_canActivate(dimm, command->bankGroups, command->banks, currentTime);
 	if (retVal == 0)
 	{
-		Printf("%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
-		OUTPUT("%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
+		Fprintf(output_file, "%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
+		*cmdSent = true;
 		return dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 	}
 	if (retVal == -1)
 		retVal = dimm_canPrecharge(dimm, command->bankGroups, command->banks, currentTime);
 	if (retVal == 0)
 	{
-		Printf("%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
-		OUTPUT("%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
+		Fprintf(output_file, "%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
+		*cmdSent = true;
 		return dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
 	}
 	return retVal;
