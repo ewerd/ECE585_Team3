@@ -161,7 +161,7 @@ int bank_read(bank_t *bank, unsigned row, unsigned long long currentTime)
 	bank->nextWrite = currentTime + (TCAS + TBURST - CWL) * SCALE_FACTOR;
 	unsigned long long rtpTime = currentTime + TRTP * SCALE_FACTOR;
 	bank->nextPrecharge = (bank->nextPrecharge > rtpTime) ? bank->nextPrecharge : rtpTime;
-	return TCAS * SCALE_FACTOR;
+	return (TCAS + TBURST) * SCALE_FACTOR;
 }
 
 int bank_canWrite(bank_t *bank, unsigned row, unsigned long long currentTime)
@@ -216,5 +216,5 @@ int bank_write(bank_t *bank, unsigned row, unsigned long long currentTime)
 
 	unsigned long long twrTime = currentTime + (CWL + TBURST + TWR) * SCALE_FACTOR;
 	bank->nextPrecharge = (bank->nextPrecharge > twrTime) ? bank->nextPrecharge : twrTime;
-	return CWL * SCALE_FACTOR;
+	return (CWL + TBURST) * SCALE_FACTOR;
 }
