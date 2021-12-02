@@ -9,6 +9,7 @@
   - Idea: <- May not be necessary, Check if the first character is a number in the line. <- This may not work as it could have spaces before the numbers.
 - Negative time, or not monotonically increasing?
   - Solution: Dr. Faust said that the trace file will be monotonically increasing, so we can make this assumption.
+- Out of bounds address or command in parser.
 
 ## Outputs
 
