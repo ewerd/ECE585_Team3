@@ -8,6 +8,7 @@
  * @authors	TODO
  */
 
+#include <stdarg.h>
 #include "./queueADT/mem_queue.h"
 #include "./parser/parser.h"
 #include "./dimm/dimm.h"
@@ -38,7 +39,7 @@ unsigned scanCommands(bool* cmdsRdy);
 int updateCmdState(inputCommandPtr_t command);
 
 #ifdef VERBOSE
-void writeOutput(char *message, unsigned long long delay);
+void writeOutput(unsigned long long delay, const char *format, ...);
 void printOutput(void);
 #endif
 
@@ -80,7 +81,6 @@ int main(int argc, char **argv)
 			print_queue(commandQueue, 1, true);
 		}
 		#endif
-
 		// Update command queue
 		if (updateCommands() != 0)
 		{
@@ -114,8 +114,18 @@ int main(int argc, char **argv)
 		{
 			break; // Simulation complete, exit while loop
 		}
+		#ifdef VERBOSE
+		printOutput();
+		#endif
 	} // End MOL
 
+	#ifdef VERBOSE
+	if (!is_empty(outputBuffer))
+	{
+		age_queue(outputBuffer,getAge(outputBuffer->size, outputBuffer)); 
+		printOutput();
+	}
+	#endif
 	// garbage collection for queue and parser
 	garbageCollection();
 
@@ -128,6 +138,7 @@ int main(int argc, char **argv)
  */
 void garbageCollection()
 {
+	fclose(output_file);
 	clean_queue(commandQueue);
 	clean_queue(outputBuffer);
 	cleanParser(parser);
@@ -227,6 +238,9 @@ int updateCommands()
 			Fprintf(stderr, "Error in mem_sim.updateCommands(): Failed to insert command into command queue.\n");
 			return -1;
 		}
+		#ifdef VERBOSE
+		writeOutput(0, "Added new request to queue:\n Time:%llu Type:%6s Address:%#010llX, Group:%u, Bank:%u, Row:%5u, Upper Column:%3u", currentCommandLine->cpuCycle, getCommandString(currentCommandLine->operation), currentCommandLine->address, currentCommandLine->bankGroups, currentCommandLine->banks, currentCommandLine->rows, currentCommandLine->upperColumns);
+		#endif
 	}
 	return 0;
 }
@@ -247,8 +261,9 @@ unsigned long long advanceTime()
 	// If the command queue is empty and the parser is at EOF, then the simulation is done
 	if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
 	{
+		#ifdef DEBUG
 		Printf("At time %llu, last command removed from queue. Ending simulation.\n", currentTime);
-		fclose(output_file);
+		#endif
 		return 0;
 	}
 
@@ -258,7 +273,8 @@ unsigned long long advanceTime()
 	// Check if the time jump would take us past the limit of the simulation
 	if (currentTime + timeJump < currentTime)
 	{
-		Printf("Simulation exceeded max simulation time of %llu. Ending simulation", ULLONG_MAX);
+		Fprintf(stderr, "Simulation exceeded max simulation time of %llu. Ending simulation", ULLONG_MAX);
+		currentTime = ULLONG_MAX;
 		return 0;
 	}
 	// Advance current time by that calculated time
@@ -268,6 +284,9 @@ unsigned long long advanceTime()
 	#endif
 	// Age items in queue by time advanced
 	age_queue(commandQueue, timeJump);
+	#ifdef VERBOSE
+	age_queue(outputBuffer, timeJump);
+	#endif
 	return timeJump;
 }
 
@@ -300,6 +319,10 @@ unsigned long long getTimeJump()
 		Printf("mem_sim.getTimeJump(): Next command finishes in %llu\n", timeJump);
 		#endif
 	}
+	#ifdef VERBOSE
+	int nextOutput = getAge(1, outputBuffer);
+	timeJump = (timeJump < nextOutput) ? timeJump : nextOutput;
+	#endif
 	#ifdef DEBUG
 	Printf("mem_sim.getTimeJump(): Parser line state = %s\n", getParserState(parser->lineState));
 	#endif
@@ -341,6 +364,9 @@ void *queueRemove(queuePtr_t queue, unsigned index)
 	if (oldItem == NULL)
 	{
 		Fprintf(stderr, "Error in mem_sim.queueRemove(): Failed to remove item from queue at index %u\n", index);
+		print_queue(queue, index, true);
+		garbageCollection();
+		exit(EXIT_FAILURE);
 	}
 	return oldItem;
 }
@@ -420,20 +446,26 @@ char *parseArgs(int argc, char **argv)
 					
 					outFile = argv[i + 1];
 					output_file = fopen(outFile, "w");
-					Printf("Output file flag detected. File Format Correct. Print to %s\n", outFile);
+					#ifdef DEBUG
+					Printf("mem_sim.parseArgs():Output file flag detected. File Format Correct. Print to %s\n", outFile);
+					#endif
 				}
 				else
 				{	
 					
 					output_file = fopen("output.txt", "w");
-					Printf("Output file flag detected. File Format Not Correct. Defualt to 'output.txt'\n");
+					#ifdef DEBUG
+					Printf("mem_sim.parseArgs()Output file flag detected. File Format Not Correct. Defualt to 'output.txt'\n");
+					#endif
 				}
 			}
 			else
 			{
 				
 				output_file = fopen("output.txt", "w");
-				Printf("Output file flag detected. File name not provided. Defualt to 'output.txt'\n");
+				#ifdef DEBUG
+				Printf("mem_sim.parseArgs():Output file flag detected. File name not provided. Defualt to 'output.txt'\n");
+				#endif
 			}
 			out_flag = true; 
 		}
@@ -441,8 +473,10 @@ char *parseArgs(int argc, char **argv)
 		if(!out_flag && i == argc -1)
 			{
 				
-				output_file = stdout; 
-				Printf("Output file flag NOT detected. Printing to stdout\n\n");
+				output_file = stdout;
+				#ifdef DEBUG
+				Printf("mem_sim.parseArgs():Output file flag NOT detected. Printing to stdout\n\n");
+				#endif
 			}
 	}
 	// Check bounds on parameters and assert defaults and/or print error messages
@@ -508,7 +542,10 @@ bool inOrderExecution(bool* cmdsRdy)
 			if (bankGroupTouched[command->bankGroups] == false && cmdsRdy[i-1] == true)
 			{
 				#ifdef DEBUG
-					Printf("mem_sim: Servicing command at index %d\n",i);
+				Printf("mem_sim: Servicing command at index %d\n",i);
+				#endif
+				#ifdef VERBOSE
+				writeOutput(0, "Priority request identified at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 				#endif
 				setAge(i, sendMemCmd(command), commandQueue);
 				return true;
@@ -539,24 +576,46 @@ int sendMemCmd(inputCommandPtr_t command)
 			command->nextCmd = REMOVE;
 			if (command->operation == WRITE)
 			{
-				Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
 				retVal = dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+				#ifdef VERBOSE
+				writeOutput(0, "Group %u, Bank %u received write command to row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal-8, "Group %u, Bank %u has begun latching data and storing in row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal, "Group %u, Bank %u has completed writing to row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				#else
+				Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+				#endif
 			}
 			else
 			{
-				Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
 				retVal = dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+				#ifdef VERBOSE
+				writeOutput(0, "Group %u, Bank %u received read command to row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal-8, "Group %u, Bank %u has begun bursting data from row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal, "Group %u, Bank %u has completed burst from row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				#else
+				Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+				#endif
 			}
 			break;
 		case ACTIVATE:
 			command->nextCmd = ACCESS;
-			Fprintf(output_file, "%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
 			retVal = dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			#ifdef VERBOSE
+			writeOutput(0, "Group %u, Bank %u has begun activating row %u", command->bankGroups, command->banks, command->rows);
+			writeOutput(retVal, "Group %u, Bank %u has completed activating row %u", command->bankGroups, command->banks, command->rows);
+			#else
+			Fprintf(output_file, "%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
+			#endif
 			break;
 		case PRECHARGE:
 			command->nextCmd = ACTIVATE;
-			Fprintf(output_file, "%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
 			retVal = dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
+			#ifdef VERBOSE
+			writeOutput(0, "Group %u, Bank %u has closed row %u and begun precharging", command->bankGroups, command->banks, dimm->group[command->bankGroups]->bank[command->banks]->row);
+			writeOutput(retVal, "Group %u, Bank %u has completed precharging and is ready to activate a row", command->bankGroups, command->banks);
+			#else
+			Fprintf(output_file, "%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
+			#endif
 			break;
 		default:
 			retVal = -1;
@@ -592,6 +651,9 @@ unsigned scanCommands(bool* cmdsRdy)
 		{
 			if (getAge(i, commandQueue) == 0)
 			{
+				#ifdef VERBOSE
+				writeOutput(0, "Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
+				#endif
 				free(queueRemove(commandQueue,i));
 				i--;
 			}
@@ -658,19 +720,23 @@ int updateCmdState(inputCommandPtr_t command)
 }
 
 #ifdef VERBOSE
-void writeOutput(char *message, unsigned long long delay)
+void writeOutput(unsigned long long delay, const char *format, ...)
 {
-	char *entry = Malloc((strlen(message) + 1) * sizeof(char));
+	char message[1024];
+	va_list argList;
+	va_start(argList, format);
+	int size = vsprintf(message, format, argList);
+	char *entry = Malloc((size + 1) * sizeof(char));
 	strcpy(entry, message);
 	sorted_insert_queue(entry, delay, outputBuffer);
 }
 
 void printOutput(void)
 {
-	while (getAge(1, outputBuffer) <= currentTime)
+	while (getAge(1, outputBuffer) == 0)
 	{
 		char *output = (char *)queueRemove(outputBuffer, 1);
-		Printf("%'4llu : %s\n", currentTime, output);
+		Fprintf(output_file, "%'llu : %s\n", currentTime, output);
 		free(output);
 	}
 }
