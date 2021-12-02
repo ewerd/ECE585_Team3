@@ -9,6 +9,7 @@ int dimm_checkArgs(dimm_t *dimm, unsigned group);
 
 dimm_t *dimm_init(unsigned groups, unsigned banks, unsigned rows)
 {
+	// Allocate dimm_t object and subsequently its bank groups and banks
 	dimm_t *newDimm = Malloc(sizeof(dimm_t));
 	newDimm->group = Malloc(groups*sizeof(bGroup_t*));
 	for (int i = 0; i < groups; i++)
@@ -24,19 +25,23 @@ dimm_t *dimm_init(unsigned groups, unsigned banks, unsigned rows)
 
 void dimm_deinit(dimm_t *dimm)
 {
+	// dimm isn't allocated, return
 	if (dimm == NULL)
 		return;
-
+	
+	// if dimm is allocated, deallocate or free() its groups first, then free() the actual dimm
 	for (unsigned i = 0; i < dimm->numGroups; i++)
 	{
 		group_deinit(dimm->group[i]);
 	}
+	// free() in this order because groups are nested under dimm
 	free(dimm->group);
 	free(dimm);
 }
 
 int dimm_canActivate(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime)
 {
+	// checks for a valid dimm pointer and group number, will return error -2 if bad arguments
 	if (dimm_checkArgs(dimm, group) < 0)
 	{
 		Fprintf(stderr, "Error in dimm.dimm_canActivate(): Bad arguments.\n");
@@ -56,17 +61,20 @@ int dimm_canActivate(dimm_t *dimm, unsigned group, unsigned bank, unsigned long 
 
 int dimm_activate(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
 {
+	// checks for a valid dimm pointer and group number, will return error -2 if bad arguments
 	if (dimm_checkArgs(dimm, group) < 0)
 	{
 		Fprintf(stderr, "Error in dimm.dimm_activate(): Bad arguments.\n");
 		return -2;
 	}
-
+	
 	if (currentTime < dimm->nextActivate)
 	{
 		Fprintf(stderr, "Error in dimm.dimm_activate(): Dimm not ready to activate. %llu cycles remain.\n",dimm->nextActivate - currentTime);
 		return -1;
 	}
+	
+	// dimm_activate calls group_activate which then calls bank_activate to check that a particular bank can be activated
 	int activateTime = group_activate(dimm->group[group], bank, row, currentTime);
 	if (activateTime > 0)
 	{
