@@ -10,6 +10,7 @@ int group_checkArgs(bGroup_t *group, unsigned bank);
 
 bGroup_t *group_init(unsigned banks, unsigned rows)
 {
+	// allocate memory for bank group and subsequently its banks
 	bGroup_t* newGroup = Malloc(sizeof(bGroup_t));
 	newGroup->bank = Malloc(banks * sizeof(bank_t*));
 	for (int i = 0; i < banks; i++)
@@ -25,11 +26,12 @@ bGroup_t *group_init(unsigned banks, unsigned rows)
 
 void group_deinit(bGroup_t *bankGroup)
 {
+	// free() each bank in the bank group
 	for (unsigned i = 0; i < bankGroup->numBanks; i++)
 	{
 		bank_deinit(bankGroup->bank[i]);
 	}
-	free(bankGroup->bank);
+	free(bankGroup->bank); // free() bank array first to avoid lost pointers
 	free(bankGroup);
 }
 
@@ -46,8 +48,9 @@ int group_canActivate(bGroup_t *group, unsigned bank, unsigned long long current
 	{
 		return bankActivateTime;
 	}
-	
+	// minimum time stamp that the group can be activated
 	int groupActivateTime = (group->nextActivate > currentTime) ? group->nextActivate - currentTime : 0;
+	// compare minimum group activate time with bank (in this group) activate time, the greater is returned
 	return (groupActivateTime > bankActivateTime) ? groupActivateTime : bankActivateTime;
 }
 
@@ -64,16 +67,17 @@ int group_activate(bGroup_t *group, unsigned bank, unsigned row, unsigned long l
 		Fprintf(stderr, "Error in group.group_activate(): Group not ready to activate. %llu cycles remain.\n", group->nextActivate - currentTime);
 		return -1;
 	}
-	int activateTime = bank_activate(group->bank[bank], row, currentTime);
-	if (activateTime > 0)
+	int activateTime = bank_activate(group->bank[bank], row, currentTime); // bank_activate will return negative number if not ready, positive for time to activate
+	if (activateTime > 0) // bank activating
 	{
-		group->nextActivate = currentTime + TRRD_L * SCALE_FACTOR;
+		// minimum time that group can theoritcall be activated again in the SAME bank group
+		group->nextActivate = currentTime + TRRD_L * SCALE_FACTOR; 
 	}
 	else
 	{
 		Fprintf(stderr, "Error in group.group_activate(): Unable to activate bank %u.\n", bank);
 	}
-	return activateTime;
+	return activateTime; // return time that desired bank and row are activated
 }
 
 int group_canPrecharge(bGroup_t *group, unsigned bank, unsigned long long currentTime)
@@ -97,12 +101,12 @@ int group_precharge(bGroup_t *group, unsigned bank, unsigned long long currentTi
 		return -2;
 	}
 	
-	int prechargeTime = bank_precharge(group->bank[bank], currentTime);
+	int prechargeTime = bank_precharge(group->bank[bank], currentTime); // time that desired bank will be precharged / if it can precharge
 	if (prechargeTime < 0)
 	{
 		Fprintf(stderr, "Error in group.group_precharge(): Unable to precharge bank %u.\n", bank);
 	}
-	return prechargeTime;
+	return prechargeTime; // return time desired bank will be precharged
 }
 
 int group_canRead(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime)
@@ -113,14 +117,14 @@ int group_canRead(bGroup_t *group, unsigned bank, unsigned row, unsigned long lo
 		return -2;
 	}
 
-	int bankReadTime = bank_canRead(group->bank[bank], row, currentTime);
+	int bankReadTime = bank_canRead(group->bank[bank], row, currentTime); // minimum time until desired bank can perform read
 	if (bankReadTime < 0)
 	{
 		return bankReadTime;
 	}
 
-	int groupReadTime = (group->nextRead > currentTime) ? group->nextRead - currentTime : 0;
-	return (bankReadTime > groupReadTime) ? bankReadTime : groupReadTime;
+	int groupReadTime = (group->nextRead > currentTime) ? group->nextRead - currentTime : 0; // minimum time until group can read again
+	return (bankReadTime > groupReadTime) ? bankReadTime : groupReadTime; // return the greater of bankReadTime or groupReadTime
 }
 
 int group_read(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime)
