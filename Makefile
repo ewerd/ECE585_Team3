@@ -27,7 +27,7 @@ verbose : $(OBJS)
 
 # -DDEBUG will define DEBUG and recompile everything with DEBUG symbols enabled
 debug : $(OBJS)
-	$(CC) $(CFLAGS) -DDEBUG -o $(EXE) $(SRC)
+	$(CC) $(CFLAGS) -DDEBUG -DVERBOSE -o $(EXE) $(SRC)
 
 clean:
 	@rm -f $(OBJS) sim.exe
