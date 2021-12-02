@@ -128,6 +128,10 @@ void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue)
 	//Create new queue item
 	queueItemPtr_t newItem = newNode(item, age);
 
+	#ifdef DEBUG
+		Printf("Queue:New size after insertion will be %u\n",queue->size+1);
+	#endif
+	queue->size++;
 	//If queue empty:
 	if (queue->firstCommand == NULL)
 	{
@@ -135,13 +139,10 @@ void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue)
 			Printf("Queue:List is empty. Inserting item\n");
 		#endif
 		queue->firstCommand = queue->lastCommand = newItem;
+		newItem->index = 1;
 		return item;
 	}
 	
-	#ifdef DEBUG
-		Printf("Queue:New size after insertion will be %u\n",queue->size+1);
-	#endif
-	queue->size++;
 	bool inserted = false;
 
 	for (queueItemPtr_t current = queue->firstCommand; current != NULL; current = current->next)
@@ -264,6 +265,9 @@ void* remove_queue_item(int index, queuePtr_t queue)
 		// iterate through queue and free selected index
 		if (temp->index == index && removedItem == NULL)
 		{
+			#ifdef DEBUG
+			Printf("Queue.remove_queue_item(): Removing item at index %u.\n", index);
+			#endif
 			// if next isn't NULL, assign
 			if (temp->next != NULL)
 			{
@@ -334,7 +338,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 {
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
-	Printf("\nQUEUE:\n");
+	Printf("\nQUEUE(Size %u):\n",queue->size);
 	// go through queue items and print out relevant information for debugging
 	for (int x = 1; x <= queue->size; x++)
 	{
