@@ -435,7 +435,7 @@ char *parseArgs(int argc, char **argv)
 				expectedNumber("step", argv[i+1]); //If no number follows, alert user. Default to 1.
 		}
 		*/
-		if ((argv[i][0] != '-') && i == 1)
+		if (argv[i][0] != '-')
 		{
 			if (fileName == NULL)
 			{
