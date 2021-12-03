@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 	// Initialize global time variable
 	currentTime = 0;
 
-	// output_file = fopen("output.txt", "w");
+	// output_file = Fopen("output.txt", "w");
 
 	#ifdef DEBUG
 	Printf("mem_sim: Completed initializations. Starting simulation.\n");
@@ -146,7 +146,7 @@ void garbageCollection()
 	clean_queue(outputBuffer);
 	cleanParser(parser);
 	dimm_deinit(dimm);
-	fclose(output_file);
+	Fclose(output_file);
 }
 
 /**
@@ -460,7 +460,7 @@ char *parseArgs(int argc, char **argv)
 				{
 					
 					outFile = argv[i + 1];
-					output_file = fopen(outFile, "w");
+					output_file = Fopen(outFile, "w");
 					i++;
 					#ifdef DEBUG
 					Printf("mem_sim.parseArgs():Output file flag detected. File Format Correct. Print to %s\n", outFile);
@@ -468,14 +468,14 @@ char *parseArgs(int argc, char **argv)
 				}
 				else
 				{	
-					output_file = fopen("output.txt", "w");
+					output_file = Fopen("output.txt", "w");
 					Fprintf(stderr, "Warning in mem_sim.parseArgs(): Output file not a .txt file. Using 'output.txt'\n%s\n", argv[i+1]);
 				}
 			}
 			else
 			{
 				
-				output_file = fopen("output.txt", "w");
+				output_file = Fopen("output.txt", "w");
 				#ifdef DEBUG
 				Printf("mem_sim.parseArgs():Output file flag detected. File name not provided. Default to 'output.txt'\n");
 				#endif

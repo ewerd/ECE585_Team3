@@ -47,3 +47,24 @@ void *Malloc(size_t size)
 	}
 	return newPtr;
 }
+
+FILE *Fopen(const char *pathname, const char *mode)
+{
+	FILE *newFilePtr = fopen(pathname, mode);
+	if (newFilePtr == NULL)
+	{
+		perror("Error calling fopen()");
+		exit(EXIT_FAILURE);
+	}
+	return newFilePtr;
+}
+
+void Fclose(FILE *stream)
+{
+	int returnCode = fclose(stream);
+	if (returnCode != 0)
+	{
+		perror("Error calling fclose()");
+		exit(EXIT_FAILURE);
+	}
+}
