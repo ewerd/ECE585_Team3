@@ -21,6 +21,7 @@ typedef struct queueItem_s
 {
 	unsigned 		index;
 	uint8_t			age;			// Time until further action is needed on this item
+	uint16_t		timeInQueue;		// Time an item has been in the queue
 	struct queueItem_s	*prev;			// previous item in Queue
 	struct queueItem_s	*next;			// next item in Queue
 	void			*item;			// pointer to item data

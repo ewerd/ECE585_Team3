@@ -57,6 +57,7 @@ static queueItemPtr_t newNode(void* item, uint8_t age)
 	queueItem->prev = NULL;
 	queueItem->next = NULL;
 	queueItem->age = age;
+	queueItem->timeInQueue = 0;
 	return queueItem;
 }
 
@@ -360,6 +361,8 @@ void age_queue(queuePtr_t queue, uint8_t increment)
 		#ifdef DEBUG
 		Printf("queue.age_queue(): New age: %u\n", current->age);
 		#endif
+
+		current->timeInQueue = ((uint16_t)(current->timeInQueue + increment) < current->timeInQueue) ? USHRT_MAX : current->timeInQueue + increment;
 	}
 }
 
@@ -379,7 +382,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 		if (x == index || all) 
 		{
 			// shortener variable for readability
-			Printf("Index: %2u\t, Age = %3u, Address = 0x%llX\n", temp->index, temp->age, (unsigned)&temp->item);
+			Printf("Index: %2u\t, Age:%3u, TIQ:%u, Address:0x%llX\n", temp->index, temp->age, temp->timeInQueue, (unsigned)&temp->item);
 
 			if (temp->next != NULL)
 			{
