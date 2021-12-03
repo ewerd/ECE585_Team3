@@ -202,6 +202,19 @@ int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsign
 	return writeTime;
 }
 
+char* operationToString(dimm_operation_t operation)
+{
+	switch (operation)
+	{
+		case(PRE):return "PRECHARGE";
+		case(ACT):return "ACTIVATE";
+		case(RD):return "READ";
+		case(WR):return "WRITE";
+		case(NONE):return "NONE";
+	}
+	return "ERROR";
+}
+
 // ------------------------------------------------------Helper Functions-------------------------------------------------------------
 
 /**
