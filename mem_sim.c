@@ -21,6 +21,8 @@
 #define BANKS_PER_GROUP 4
 #define ROWS_PER_BANK 32768
 
+#define MAX_TIME_IN_QUEUE	500
+
 /*
  * Helper function declarations.
  */ 
@@ -34,6 +36,7 @@ unsigned long long getTimeJump(void);
 int updateCommands(void);
 void serviceCommands(void);
 bool inOrderExecution(bool* cmdsRdy);
+bool prioritizeCommand(bool *cmdsRdy);
 int sendMemCmd(inputCommandPtr_t command);
 unsigned scanCommands(bool* cmdsRdy);
 int updateCmdState(inputCommandPtr_t command);
@@ -52,6 +55,7 @@ queuePtr_t outputBuffer;
 parser_t *parser;
 dimm_t *dimm;
 FILE *output_file;
+bool optimizedExecution;
 
 int main(int argc, char **argv)
 {
@@ -419,6 +423,7 @@ char *parseArgs(int argc, char **argv)
 	char *fileName = NULL;
 	char *outFile = NULL;
 	bool out_flag = false; 
+	optimizedExecution = false;
 
 	for (int i = 1; i < argc; i++) // For each string in argv
 	{
@@ -447,7 +452,7 @@ char *parseArgs(int argc, char **argv)
 				return NULL;
 			}
 		}
-		if (!strcmp(argv[i], "-o")) // If the -o flag is asserted
+		else if (!strcmp(argv[i], "-o")) // If the -o flag is asserted
 		{
 			if (i + 1 < argc) //makes sure we won't go out of bounds in strstr
 			{
@@ -472,10 +477,14 @@ char *parseArgs(int argc, char **argv)
 				
 				output_file = fopen("output.txt", "w");
 				#ifdef DEBUG
-				Printf("mem_sim.parseArgs():Output file flag detected. File name not provided. Defualt to 'output.txt'\n");
+				Printf("mem_sim.parseArgs():Output file flag detected. File name not provided. Default to 'output.txt'\n");
 				#endif
 			}
 			out_flag = true; 
+		}
+		else if(!strcmp(argv[i], "-opt"))
+		{
+			optimizedExecution = true;
 		}
 		
 	}
@@ -524,8 +533,14 @@ void serviceCommands()
 	#endif
 	if (numRdyCmds > 0)
 	{
-		inOrderExecution(cmdsRdy);
-		//More scheduling functions can be called here if out of order execution is desired
+		if (optimizedExecution)
+		{
+			prioritizeCommand(cmdsRdy);
+		}
+		else
+		{
+			inOrderExecution(cmdsRdy);
+		}
 	}
 }
 
@@ -559,6 +574,66 @@ bool inOrderExecution(bool* cmdsRdy)
 				return true;
 			}
 			bankGroupTouched[command->bankGroups] = true;
+		}
+	}
+	return false;
+}
+
+/**
+ * @fn		prioritizeCommand
+ * @brief	Chooses a single command, if any to issue to the DIMM this cycle
+ *
+ * @detail	Scans through command states and picks one on the following priorities:
+ *		1. Spent > 500 CPU cycles in the queue
+ *		2. The oldest command that is ready for a DIMM command
+ *
+ * @param	cmdsRdy	An array that has true values that indicate the same index+1 in the command queue is ready to be serviced
+ * @return	true if a command was issued to the DIMM.
+ */
+bool prioritizeCommand(bool *cmdsRdy)
+{
+	bool bankGroupTouched[4] = {false, false, false, false}; //Used to track if a command has priority access to the bank group
+	inputCommandPtr_t command;
+
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
+		//If this bank group is already waiting for a higher priority command, don't analyze it.
+		if (bankGroupTouched[command->bankGroups])
+		{
+			cmdsRdy[i-1] = false;//Make sure this command isn't serviced by any other check
+			continue;
+		}
+
+		if(getTimeInQueue(i, commandQueue) >= MAX_TIME_IN_QUEUE) //Attempt to service cmds that are older than MAX_TIME_IN_QUEUE
+		{
+			if (getAge(i, commandQueue) == 0)
+			{
+				#ifdef VERBOSE
+				writeOutput(0, "%llu: Prioritizing memory request at index %u that has spent %u in queue.", currentTime, i, getTimeInQueue(i, commandQueue));
+				#endif
+				setAge(i, sendMemCmd(command), commandQueue);
+				return true;
+			}
+			else //If they can't be serviced, then make sure no other command to the same bank is considered.
+			{
+				#ifdef VERBOSE
+				writeOutput(0, "%llu: Prioritizing memory request at index %u that has spent %u in queue. Holding all other requests to bank group %u.", currentTime, i, getTimeInQueue(i, commandQueue), command->bankGroups);
+				#endif
+				bankGroupTouched[command->bankGroups] = true;
+			}
+		}
+	}
+
+	for (int i = 0; i < commandQueue->size; i++) //If a request hasn't been serviced yet, try and service the oldest ready request
+	{
+		if (cmdsRdy[i])
+		{
+			#ifdef VERBOSE
+			writeOutput(0, "%llu: No prioritized requests are ready for a DIMM command. Servicing request at index %u", currentTime, i+1);
+			#endif
+			setAge(i+1, sendMemCmd(peak_queue_item(i+1, commandQueue)), commandQueue);
+			return true;
 		}
 	}
 	return false;
