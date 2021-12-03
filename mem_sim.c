@@ -138,11 +138,11 @@ int main(int argc, char **argv)
  */
 void garbageCollection()
 {
-	fclose(output_file);
 	clean_queue(commandQueue);
 	clean_queue(outputBuffer);
 	cleanParser(parser);
 	dimm_deinit(dimm);
+	fclose(output_file);
 }
 
 /**
