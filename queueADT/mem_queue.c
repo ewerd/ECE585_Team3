@@ -14,7 +14,7 @@
 #include "mem_queue.h"
 
 // Private helper functions
-static queueItemPtr_t newNode(void* item, unsigned long long age);
+static queueItemPtr_t newNode(void* item, uint8_t age);
 
 // FUNCTION DEFINITIONS:
 queuePtr_t create_queue(unsigned maxSize)
@@ -49,7 +49,7 @@ void clean_queue(queuePtr_t list)
  * @param	item	Pointer to the item being stored in the node
  * @param	age	Age of the item in the node
  */
-static queueItemPtr_t newNode(void* item, unsigned long long age)
+static queueItemPtr_t newNode(void* item, uint8_t age)
 {
 	queueItemPtr_t queueItem = Malloc(sizeof(queueItem_t));
 	// successful allocation; insert command into new queueItem
@@ -111,10 +111,10 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, void *item)
 	return queueItem;
 }
 
-void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue)
+void *sorted_insert_queue(void *item, uint8_t age, queuePtr_t queue)
 {
 	#ifdef DEBUG
-		Printf("Queue:Inserting item with age %llu into list with size %u\n",age,queue->size);
+		Printf("Queue:Inserting item with age %u into list with size %u\n",(unsigned)age,queue->size);
 	#endif
 	//If queue is full, don't insert and return NULL
 	if (queue->size == queue->maxSize)
@@ -148,12 +148,12 @@ void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue)
 	for (queueItemPtr_t current = queue->firstCommand; current != NULL; current = current->next)
 	{
 		#ifdef DEBUG
-			Printf("Queue:Comparing to item with age %llu\n", current->age);
+			Printf("Queue:Comparing to item with age %u\n", current->age);
 		#endif
 		if (newItem->age < current->age && !inserted)
 		{
 			#ifdef DEBUG
-				Printf("Queue:Inserting item with age %llu here at index %u.\n",newItem->age,current->index);
+				Printf("Queue:Inserting item with age %u here at index %u.\n",newItem->age,current->index);
 			#endif
 			if (current->prev != NULL)
 			{
@@ -224,10 +224,10 @@ void* peak_queue_item(unsigned index, queuePtr_t queue)
 	return NULL;
 }
 
-unsigned long long getAge(unsigned index, queuePtr_t queue)
+uint8_t getAge(unsigned index, queuePtr_t queue)
 {
 	if (index > queue->size)
-		return ULLONG_MAX;
+		return 0;
 
 	queueItemPtr_t node = queue->firstCommand;
 	for (int i = 1; i < index; i++)
@@ -238,7 +238,7 @@ unsigned long long getAge(unsigned index, queuePtr_t queue)
 	return node->age;
 }
 
-int setAge(unsigned index, unsigned long long age, queue_t *queue)
+int setAge(unsigned index, uint8_t age, queue_t *queue)
 {
 	queueItem_t *entry = queue->firstCommand;
 	for (int i = 1; i < index; i++)
@@ -318,12 +318,15 @@ void* remove_queue_item(int index, queuePtr_t queue)
 	return removedItem;
 }
 
-void age_queue(queuePtr_t queue, unsigned long long increment)
+void age_queue(queuePtr_t queue, uint8_t increment)
 {
 	// go through queue and age each queue item
 	for (queueItemPtr_t current = queue->firstCommand; current != NULL; current = current->next)
 	{
-		if (current->age - increment > current->age)
+		#ifdef DEBUG
+		Printf("queue.age_queue(): Decrementing age: %u by %u\n", current->age, increment);
+		#endif
+		if (current->age < increment)
 		{
 			current->age = 0;
 		}
@@ -331,6 +334,9 @@ void age_queue(queuePtr_t queue, unsigned long long increment)
 		{
 			current->age -= increment;
 		}
+		#ifdef DEBUG
+		Printf("queue.age_queue(): New age: %u\n", current->age);
+		#endif
 	}
 }
 
@@ -345,7 +351,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 		if (x == index || all) 
 		{
 			// shortener variable for readability
-			Printf("Index: %2u\t, Age = %10llu, Address = 0x%llX\n", temp->index, temp->age, (unsigned)&temp->item);
+			Printf("Index: %2u\t, Age = %3u, Address = 0x%llX\n", temp->index, temp->age, (unsigned)&temp->item);
 
 			if (temp->next != NULL)
 			{

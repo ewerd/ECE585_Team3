@@ -39,7 +39,7 @@ unsigned scanCommands(bool* cmdsRdy);
 int updateCmdState(inputCommandPtr_t command);
 
 #ifdef VERBOSE
-void writeOutput(unsigned long long delay, const char *format, ...);
+void writeOutput(uint8_t delay, const char *format, ...);
 void printOutput(void);
 #endif
 
@@ -81,6 +81,7 @@ int main(int argc, char **argv)
 			print_queue(commandQueue, 1, true);
 		}
 		#endif
+
 		// Update command queue
 		if (updateCommands() != 0)
 		{
@@ -89,6 +90,7 @@ int main(int argc, char **argv)
 			return -1;
 		}
 
+		//Send DRAM command if on an even CPU clock cycle
 		if (currentTime % 2 == 0)
 		{
 			#ifdef DEBUG
@@ -105,15 +107,12 @@ int main(int argc, char **argv)
 		}
 		#endif
 
-		#ifdef VERBOSE
-		printOutput();
-		#endif
-
 		// Advance time. If end conditions met, 0 will be returned.
 		if (advanceTime() == 0)
 		{
 			break; // Simulation complete, exit while loop
 		}
+
 		#ifdef VERBOSE
 		printOutput();
 		#endif
@@ -122,11 +121,12 @@ int main(int argc, char **argv)
 	#ifdef VERBOSE
 	if (!is_empty(outputBuffer))
 	{
-		age_queue(outputBuffer,getAge(outputBuffer->size, outputBuffer)); 
+		age_queue(outputBuffer,UCHAR_MAX); 
 		printOutput();
 	}
 	#endif
-	// garbage collection for queue and parser
+
+	// garbage collection to close fd's and clean the heap
 	garbageCollection();
 
 	return 0; // End
@@ -149,6 +149,8 @@ void garbageCollection()
  * @fn		initSim
  * @brief	Initializes all the global pointer in the simulation
  *
+ * @param	argc	Number of arguments passed from the command line
+ * @param	argv	Array of \0 terminated strings each containing one argument
  */
 void initSim(int argc, char **argv)
 {
@@ -239,7 +241,7 @@ int updateCommands()
 			return -1;
 		}
 		#ifdef VERBOSE
-		writeOutput(0, "Added new request to queue:\n Time:%llu Type:%6s Address:%#010llX, Group:%u, Bank:%u, Row:%5u, Upper Column:%3u", currentCommandLine->cpuCycle, getCommandString(currentCommandLine->operation), currentCommandLine->address, currentCommandLine->bankGroups, currentCommandLine->banks, currentCommandLine->rows, currentCommandLine->upperColumns);
+		writeOutput(0, "%llu: Added new request to queue:\n Time:%llu Type:%6s Address:%#010llX, Group:%u, Bank:%u, Row:%5u, Upper Column:%3u", currentTime, currentCommandLine->cpuCycle, getCommandString(currentCommandLine->operation), currentCommandLine->address, currentCommandLine->bankGroups, currentCommandLine->banks, currentCommandLine->rows, currentCommandLine->upperColumns);
 		#endif
 	}
 	return 0;
@@ -256,8 +258,6 @@ int updateCommands()
  */
 unsigned long long advanceTime()
 {
-	unsigned long long timeJump = getTimeJump();
-
 	// If the command queue is empty and the parser is at EOF, then the simulation is done
 	if (is_empty(commandQueue) && parser->lineState == ENDOFFILE)
 	{
@@ -266,6 +266,8 @@ unsigned long long advanceTime()
 		#endif
 		return 0;
 	}
+	
+	unsigned long long timeJump = getTimeJump(); //Calculate time jump
 
 	#ifdef DEBUG
 	Printf("mem_sim.advanceTime(): Time jump will be %llu\n", timeJump);
@@ -282,11 +284,23 @@ unsigned long long advanceTime()
 	#ifdef DEBUG
 	Printf("mem_sim.advanceTime(): Aging command queue\n");
 	#endif
+
 	// Age items in queue by time advanced
-	age_queue(commandQueue, timeJump);
-	#ifdef VERBOSE
-	age_queue(outputBuffer, timeJump);
-	#endif
+	if (timeJump > (unsigned long long)UCHAR_MAX)
+	{
+		age_queue(commandQueue, UCHAR_MAX);
+		#ifdef VERBOSE
+		age_queue(outputBuffer, UCHAR_MAX);
+		#endif
+	}
+	else
+	{
+		age_queue(commandQueue, timeJump);
+		#ifdef VERBOSE
+		age_queue(outputBuffer, timeJump);
+		#endif
+	}
+
 	return timeJump;
 }
 
@@ -319,10 +333,6 @@ unsigned long long getTimeJump()
 		Printf("mem_sim.getTimeJump(): Next command finishes in %llu\n", timeJump);
 		#endif
 	}
-	#ifdef VERBOSE
-	int nextOutput = getAge(1, outputBuffer);
-	timeJump = (timeJump < nextOutput) ? timeJump : nextOutput;
-	#endif
 	#ifdef DEBUG
 	Printf("mem_sim.getTimeJump(): Parser line state = %s\n", getParserState(parser->lineState));
 	#endif
@@ -437,26 +447,24 @@ char *parseArgs(int argc, char **argv)
 				return NULL;
 			}
 		}
-		if (!strcmp(argv[i], "-o")) // If the -out flag is asserted
+		if (!strcmp(argv[i], "-o")) // If the -o flag is asserted
 		{
 			if (i + 1 < argc) //makes sure we won't go out of bounds in strstr
 			{
-				if (strstr(argv[i + 1], ".txt") != NULL)  // Verify the user specified a filename
+				if (strstr(argv[i + 1], ".txt") != NULL)  // Verify the user specified a .txt filename
 				{
 					
 					outFile = argv[i + 1];
 					output_file = fopen(outFile, "w");
+					i++;
 					#ifdef DEBUG
 					Printf("mem_sim.parseArgs():Output file flag detected. File Format Correct. Print to %s\n", outFile);
 					#endif
 				}
 				else
 				{	
-					
 					output_file = fopen("output.txt", "w");
-					#ifdef DEBUG
-					Printf("mem_sim.parseArgs()Output file flag detected. File Format Not Correct. Defualt to 'output.txt'\n");
-					#endif
+					Fprintf(stderr, "Warning in mem_sim.parseArgs(): Output file not a .txt file. Using 'output.txt'\n%s\n", argv[i+1]);
 				}
 			}
 			else
@@ -470,19 +478,19 @@ char *parseArgs(int argc, char **argv)
 			out_flag = true; 
 		}
 		
-		if(!out_flag && i == argc -1)
-			{
-				
-				output_file = stdout;
-				#ifdef DEBUG
-				Printf("mem_sim.parseArgs():Output file flag NOT detected. Printing to stdout\n\n");
-				#endif
-			}
 	}
 	// Check bounds on parameters and assert defaults and/or print error messages
 	if (fileName == NULL)
 	{
 		Fprintf(stderr, "Error in mem_sim: No input file name provided.\n");
+	}
+
+	if(!out_flag)
+	{	
+		output_file = stdout;
+		#ifdef DEBUG
+		Printf("mem_sim.parseArgs():Output file flag NOT detected. Printing to stdout\n\n");
+		#endif
 	}
 
 	return fileName;
@@ -545,7 +553,7 @@ bool inOrderExecution(bool* cmdsRdy)
 				Printf("mem_sim: Servicing command at index %d\n",i);
 				#endif
 				#ifdef VERBOSE
-				writeOutput(0, "Priority request identified at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(0, "%llu: Priority request identified at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 				#endif
 				setAge(i, sendMemCmd(command), commandQueue);
 				return true;
@@ -578,22 +586,22 @@ int sendMemCmd(inputCommandPtr_t command)
 			{
 				retVal = dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 				#ifdef VERBOSE
-				writeOutput(0, "Group %u, Bank %u received write command to row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal-8, "Group %u, Bank %u has begun latching data and storing in row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal, "Group %u, Bank %u has completed writing to row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(0, "%llu: Group %u, Bank %u received write command to row %u, upper column %u", currentTime, command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal-(TBURST*SCALE_FACTOR), "%llu: Group %u, Bank %u has begun latching data and storing in row %u, upper column %u", currentTime+retVal-(TBURST*SCALE_FACTOR), command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal, "%llu: Group %u, Bank %u has completed writing to row %u, upper column %u", currentTime+retVal, command->bankGroups, command->banks, command->rows, command->upperColumns);
 				#else
-				Fprintf(output_file, "%'26llu\tWR  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+				Fprintf(output_file, "%'26llu\tWR  %X %X %X\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
 				#endif
 			}
 			else
 			{
 				retVal = dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 				#ifdef VERBOSE
-				writeOutput(0, "Group %u, Bank %u received read command to row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal-8, "Group %u, Bank %u has begun bursting data from row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal, "Group %u, Bank %u has completed burst from row %u, upper column %u", command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(0, "%llu: Group %u, Bank %u received read command to row %u, upper column %u", currentTime, command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal-(TBURST*SCALE_FACTOR), "%llu: Group %u, Bank %u has begun bursting data from row %u, upper column %u", currentTime+retVal-(TBURST*SCALE_FACTOR), command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(retVal, "%llu: Group %u, Bank %u has completed burst from row %u, upper column %u", currentTime+retVal, command->bankGroups, command->banks, command->rows, command->upperColumns);
 				#else
-				Fprintf(output_file, "%'26llu\tRD  %u %u %u\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+				Fprintf(output_file, "%'26llu\tRD  %X %X %X\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
 				#endif
 			}
 			break;
@@ -601,20 +609,20 @@ int sendMemCmd(inputCommandPtr_t command)
 			command->nextCmd = ACCESS;
 			retVal = dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 			#ifdef VERBOSE
-			writeOutput(0, "Group %u, Bank %u has begun activating row %u", command->bankGroups, command->banks, command->rows);
-			writeOutput(retVal, "Group %u, Bank %u has completed activating row %u", command->bankGroups, command->banks, command->rows);
+			writeOutput(0, "%llu: Group %u, Bank %u has begun activating row %u", currentTime, command->bankGroups, command->banks, command->rows);
+			writeOutput(retVal, "%llu: Group %u, Bank %u has completed activating row %u", currentTime+retVal, command->bankGroups, command->banks, command->rows);
 			#else
-			Fprintf(output_file, "%'26llu\tACT %u %u %u\n", currentTime, command->bankGroups, command->banks, command->rows);
+			Fprintf(output_file, "%'26llu\tACT %X %X %X\n", currentTime, command->bankGroups, command->banks, command->rows);
 			#endif
 			break;
 		case PRECHARGE:
 			command->nextCmd = ACTIVATE;
 			retVal = dimm_precharge(dimm, command->bankGroups, command->banks, currentTime);
 			#ifdef VERBOSE
-			writeOutput(0, "Group %u, Bank %u has closed row %u and begun precharging", command->bankGroups, command->banks, dimm->group[command->bankGroups]->bank[command->banks]->row);
-			writeOutput(retVal, "Group %u, Bank %u has completed precharging and is ready to activate a row", command->bankGroups, command->banks);
+			writeOutput(0, "%llu: Group %u, Bank %u has closed row %u and begun precharging", currentTime, command->bankGroups, command->banks, dimm->group[command->bankGroups]->bank[command->banks]->row);
+			writeOutput(retVal, "%llu: Group %u, Bank %u has completed precharging and is ready to activate a row", currentTime+retVal, command->bankGroups, command->banks);
 			#else
-			Fprintf(output_file, "%'26llu\tPRE %u %u\n", currentTime, command->bankGroups, command->banks);
+			Fprintf(output_file, "%'26llu\tPRE %X %X\n", currentTime, command->bankGroups, command->banks);
 			#endif
 			break;
 		default:
@@ -652,7 +660,7 @@ unsigned scanCommands(bool* cmdsRdy)
 			if (getAge(i, commandQueue) == 0)
 			{
 				#ifdef VERBOSE
-				writeOutput(0, "Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
+				writeOutput(0, "%llu: Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 				#endif
 				free(queueRemove(commandQueue,i));
 				i--;
@@ -720,7 +728,7 @@ int updateCmdState(inputCommandPtr_t command)
 }
 
 #ifdef VERBOSE
-void writeOutput(unsigned long long delay, const char *format, ...)
+void writeOutput(uint8_t delay, const char *format, ...)
 {
 	char message[1024];
 	va_list argList;
@@ -733,10 +741,10 @@ void writeOutput(unsigned long long delay, const char *format, ...)
 
 void printOutput(void)
 {
-	while (getAge(1, outputBuffer) == 0)
+	while (getAge(1, outputBuffer) == 0 && !is_empty(outputBuffer))
 	{
 		char *output = (char *)queueRemove(outputBuffer, 1);
-		Fprintf(output_file, "%'llu : %s\n", currentTime, output);
+		Fprintf(output_file, "%s\n", output);
 		free(output);
 	}
 }

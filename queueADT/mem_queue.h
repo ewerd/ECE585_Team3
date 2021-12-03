@@ -12,14 +12,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <limits.h>
 
 // STRUCTS AND GLOBALS
 
 typedef struct queueItem_s 
 {
-	unsigned index;
-	unsigned long long	age;			// how long the queue item has been in the queue
+	unsigned 		index;
+	uint8_t			age;			// Time until further action is needed on this item
 	struct queueItem_s	*prev;			// previous item in Queue
 	struct queueItem_s	*next;			// next item in Queue
 	void			*item;			// pointer to item data
@@ -82,7 +83,7 @@ queueItemPtr_t insert_queue_item(queuePtr_t queue, void* item);
  * @param	queue	Pointer to the target queue
  * @return	Pointer to the new item after insertion. NULL otherwise.
  */
-void *sorted_insert_queue(void *item, unsigned long long age, queuePtr_t queue);
+void *sorted_insert_queue(void *item, uint8_t age, queuePtr_t queue);
 
 /**
 * FUNCTION:			peak_queue_item
@@ -104,7 +105,7 @@ void *peak_queue_item(unsigned index, queuePtr_t queue);
  * @param	index	Index of node in queue
  * @returns	The age of the item in the node. ULLONG_MAX if the index is out of range
  */
-unsigned long long getAge(unsigned index, queuePtr_t queue);
+uint8_t getAge(unsigned index, queuePtr_t queue);
 
 /**
  * @fn		setAge
@@ -115,7 +116,7 @@ unsigned long long getAge(unsigned index, queuePtr_t queue);
  * @param	queue	Target queue
  * @returns	0 if successfull. -1 otherwise
  */
-int setAge(unsigned index, unsigned long long age, queue_t *queue);
+int setAge(unsigned index, uint8_t age, queue_t *queue);
 
 /**
 * FUNCTION:			remove_queue_item
@@ -139,7 +140,7 @@ void* remove_queue_item(int index, queuePtr_t queue);
 *
 * RETURNS:			N/A
 */
-void age_queue(queuePtr_t queue, unsigned long long increment);
+void age_queue(queuePtr_t queue, uint8_t increment);
 
 /**
 * FUNCTION:			print_queue
