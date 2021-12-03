@@ -62,7 +62,7 @@ FILE *Fopen(const char *pathname, const char *mode)
 void Fclose(FILE *stream)
 {
 	int returnCode = fclose(stream);
-	if (returnCode == EOF)
+	if (returnCode != 0)
 	{
 		perror("Error calling fclose()");
 		exit(EXIT_FAILURE);
