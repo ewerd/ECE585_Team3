@@ -120,6 +120,16 @@ uint8_t getAge(unsigned index, queuePtr_t queue);
 int setAge(unsigned index, uint8_t age, queue_t *queue);
 
 /**
+ * @fn		getTimeInQueue
+ * @brief	Get the time an item has been in the queue
+ *
+ * @param	index	Index of node in queue
+ * @param	queue	Target queue
+ * @returns	The time the item has been in the queue. Max of USHRT_MAX
+ */
+uint16_t getTimeInQueue(unsigned index, queue_t *queue);
+
+/**
 * FUNCTION:			remove_queue_item
 *
 * INFO:				Removes an item from the queue (completed memory request)

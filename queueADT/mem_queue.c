@@ -271,6 +271,27 @@ int setAge(unsigned index, uint8_t age, queue_t *queue)
 	return 0;
 }
 
+uint16_t getTimeInQueue(unsigned index, queue_t *queue)
+{
+	if (index == 0)
+	{
+		Fprintf(stderr, "Warning in queue.getTimeInQueue(): Passed 0 as index to a data structure that start at index 1. SHAME!\n");
+		index = 1;
+	}
+	if (index > queue->size)
+	{
+		Fprintf(stderr, "Warning in queue.getTimeInQueue(): Passed out of bounds index.\n");
+		return 0;
+	}
+
+	queueItem_t *entry = queue->firstCommand;
+	for (unsigned i = 1; i<index; i++)
+	{
+		entry = entry->next;
+	}
+	return entry->timeInQueue;
+}
+
 void* remove_queue_item(int index, queuePtr_t queue)
 {
 	if (index == 0)
