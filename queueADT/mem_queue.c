@@ -200,6 +200,12 @@ void* peak_queue_item(unsigned index, queuePtr_t queue)
 	#ifdef DEBUG
 		Printf("Queue: Peaking at queue index %u. Size is %d\n", index, queue->size);
 	#endif
+	if (index == 0)
+	{
+		Fprintf(stderr, "Warning in queue.peak_queue_item(): Passed index as 0. This data structure is base 1. SHAME!\n");
+		index = 1;
+	}
+	
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
 
@@ -226,6 +232,11 @@ void* peak_queue_item(unsigned index, queuePtr_t queue)
 
 uint8_t getAge(unsigned index, queuePtr_t queue)
 {
+	if (index == 0)
+	{
+		Fprintf(stderr, "Warning in queue.getAge(): Passed 0 as index to a data structure that start at index 1. SHAME!\n");
+		index = 1;
+	}
 	if (index > queue->size)
 		return 0;
 
@@ -240,6 +251,12 @@ uint8_t getAge(unsigned index, queuePtr_t queue)
 
 int setAge(unsigned index, uint8_t age, queue_t *queue)
 {
+	if (index == 0)
+	{
+		Fprintf(stderr, "Warning in queue.setAge(): Passed 0 as index to a data structure that start at index 1. SHAME!\n");
+		index = 1;
+	}
+
 	queueItem_t *entry = queue->firstCommand;
 	for (int i = 1; i < index; i++)
 	{
@@ -255,6 +272,12 @@ int setAge(unsigned index, uint8_t age, queue_t *queue)
 
 void* remove_queue_item(int index, queuePtr_t queue)
 {
+	if (index == 0)
+	{
+		Fprintf(stderr, "Warning in queue.remove_queue_item(): Passed 0 as index to a data structure that start at index 1. SHAME!\n");
+		index = 1;
+	}
+
 	//variables:
 	queueItemPtr_t next, temp = queue->firstCommand;
 	
@@ -342,6 +365,11 @@ void age_queue(queuePtr_t queue, uint8_t increment)
 
 void print_queue(queuePtr_t queue, int index, bool all)
 {
+	if (index == 0)
+	{
+		Fprintf(stderr, "Warning in queue.print_queue(): Passed 0 as index to a data structure that start at index 1. SHAME!\n");
+		index = 1;
+	}
 	// variables:
 	queueItemPtr_t temp = queue->firstCommand;
 	Printf("\nQUEUE(Size %u):\n",queue->size);
