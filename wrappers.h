@@ -37,4 +37,21 @@ void Fprintf(FILE* stream, char* format, ...);
  */
 void *Malloc(size_t size);
 
+/**
+ * @fn		Fopen
+ * @brief	Wrapper function for fopen
+ *
+ * @param	pathname path to filename to open
+ * @param	mode	 mode you wish to use with opened file
+ * @return	Point to File
+ */
+FILE *Fopen(const char *pathname, const char *mode);
+
+/**
+ * @fn		Fopen
+ * @brief	Wrapper function for fopen
+ *
+ * @param	stream  FILE pointer to be closed
+ */
+void Fclose(FILE *stream);
 #endif

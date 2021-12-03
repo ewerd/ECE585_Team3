@@ -37,12 +37,7 @@ parserPtr_t initParser(char* inputFile)
 	newParser = Malloc(sizeof(parser_t));
 		
 	// Open file pointer
-	newParser->filename = fopen(inputFile, "r");
-	if (inputFile == NULL)
-	{
-		Fprintf(stderr, "\nError initParser: could not open file named %s\n", inputFile);
-		exit(EXIT_FAILURE);
-	}
+	newParser->filename = Fopen(inputFile, "r");
 	
 	newParser->lineState = PARSE_ERROR;
 	newParser->nextLine = NULL;
@@ -66,10 +61,7 @@ void cleanParser(parser_t* parser)
 	if (parser == NULL)
 		return;
 
-	if (fclose(parser->filename) != 0)
-	{
-		Fprintf(stderr, "Error in Parser.cleanParser(): Error closing input stream\n");
-	}
+	Fclose(parser->filename);
 	free(parser->nextLine);
 	free(parser);
 }
