@@ -10,6 +10,10 @@ SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c wrappers.c dimm/dimm.c dimm
 HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h dimm/dimm.h dimm/group.h dimm/bank.h
 EXE  = sim.exe
 
+#.PHONY to inform Make to not associate all with a file named all
+.PHONY: all
+all: sim
+
 sim : $(OBJS)
 	$(CC) $(LDFLAGS) -o $(EXE) $(SRC)
 
@@ -29,5 +33,7 @@ verbose : $(OBJS)
 debug : $(OBJS)
 	$(CC) $(CFLAGS) -DDEBUG -DVERBOSE -o $(EXE) $(SRC)
 
+#.PHONY to inform Make to not associate clean with a file named clean
+.PHONY: clean
 clean:
 	@rm -f $(OBJS) sim.exe
