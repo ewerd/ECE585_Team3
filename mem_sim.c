@@ -573,7 +573,7 @@ bool inOrderExecution(bool* cmdsRdy)
 				setAge(i, sendMemCmd(command), commandQueue);
 				return true;
 			}
-			bankGroupTouched[command->bankGroups] = true;
+			//bankGroupTouched[command->bankGroups] = true;
 		}
 	}
 	return false;
