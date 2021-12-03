@@ -3,11 +3,14 @@
 #ifndef BANK_H_
 #define BANK_H_
 
+
+typedef enum {PRE, ACT, RD, WR, NONE} dimm_operation_t;
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
 typedef struct {
 	unsigned int		row; //Track open row 
 	unsigned int		maxRows;
+	dimm_operation_t	priOp; //Tracks the current priority of this bank
 	bankState_t		state; //Current or target bank state
 	unsigned long long	nextPrecharge; //Time available for next precharge cmd (tRP)
 	unsigned long long	nextActivate; //Time available for next activate cmd (tRCD)
@@ -32,6 +35,28 @@ bank_t *bank_init(unsigned rows);
  * @param	bank	Target bank to clean
  */
 void bank_deinit(bank_t *bank);
+
+/**
+ * @fn		bank_setPriority
+ * @brief	Informs the bank to prioritize a command and to block others
+ *
+ * @param	bank	Pointer to the bank
+ * @param	row	Number of row for read or write command. If operation != READ|WRITE then this value
+ *			is not used.
+ * @param	operation	The operation to prioritize
+ * @param	currentTime	The current simulation time
+ * @return	Time until this bank is ready for the command. -1 if the priority cannot be set due to the
+ *		state of the bank. -2 if bad arguments are passed. -3 if the bank already has a priority set
+ */
+int bank_setPriority(bank_t *bank, unsigned row, dimm_operation_t operation, unsigned long long currentTime);
+
+/**
+ * @fn		bank_clrPriority
+ * @brief	Clears the priority operation of a bank
+ *
+ * @param	bank	Pointer to the bank struct
+ */
+void bank_clrPriority(bank_t *bank);
 
 /**
  * @fn		bank_canActivate

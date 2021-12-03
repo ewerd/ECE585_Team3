@@ -185,4 +185,13 @@ int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
  */
 int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime);
 
+/**
+ * @fn		operationToString
+ * @brief	Get string representation of an operation_t enum
+ *
+ * @param	operation	dimm_operation_t being encoded
+ * @return	String of the operation_t name
+ */
+char* operationToString(dimm_operation_t operation);
+
 #endif
