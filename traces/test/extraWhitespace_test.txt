@@ -1,0 +1,3 @@
+	 0	 1	0xFF
+1	1	 0XFFFF
+2 1 	0XFFFFFF
