@@ -137,6 +137,15 @@ int prepCommand(parserPtr_t parser)
 		return -1;
 	}
 
+	// Check if address is out of range, trying to reference a row that is impossible to reach.
+	if ((address >> 18) > 0x7FFF)	
+	{
+		Fprintf(stderr,"Error in Parser.prepCommand(): Address provided is out of range for the size of memory. ");
+		Fprintf(stderr,"Refereneces invalid row address.\nThis line: ");
+		Fprintf(stderr,"%s", inputLine);
+		return -1;
+	}
+	
 	// Allocate memory for next line
 	parser->nextLine = Malloc(sizeof(inputCommand_t));
 
@@ -144,7 +153,7 @@ int prepCommand(parserPtr_t parser)
 	parser->nextLine->operation = (operation_t)commandInt;
 	parser->nextLine->nextCmd = ACCESS;
 	parser->nextLine->address = address;
-	parser->nextLine->rows = (address & 0x1FFFC0000) >> 18;
+	parser->nextLine->rows = address >> 18;
 	parser->nextLine->upperColumns = (address & 0x3FC00) >> 10;
 	parser->nextLine->banks = (address & 0x300) >> 8;
 	parser->nextLine->bankGroups = (address & 0xC0) >> 6;
