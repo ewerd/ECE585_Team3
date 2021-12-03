@@ -275,7 +275,7 @@ unsigned long long advanceTime()
 	// Check if the time jump would take us past the limit of the simulation
 	if (currentTime + timeJump < currentTime)
 	{
-		Fprintf(stderr, "Simulation exceeded max simulation time of %llu. Ending simulation", ULLONG_MAX);
+		Fprintf(stderr, "Simulation exceeded max simulation time of %llu. Ending simulation\n", ULLONG_MAX);
 		currentTime = ULLONG_MAX;
 		return 0;
 	}
