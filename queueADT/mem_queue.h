@@ -21,6 +21,7 @@ typedef struct queueItem_s
 {
 	unsigned 		index;
 	uint8_t			age;			// Time until further action is needed on this item
+	uint16_t		timeInQueue;		// Time an item has been in the queue
 	struct queueItem_s	*prev;			// previous item in Queue
 	struct queueItem_s	*next;			// next item in Queue
 	void			*item;			// pointer to item data
@@ -117,6 +118,16 @@ uint8_t getAge(unsigned index, queuePtr_t queue);
  * @returns	0 if successfull. -1 otherwise
  */
 int setAge(unsigned index, uint8_t age, queue_t *queue);
+
+/**
+ * @fn		getTimeInQueue
+ * @brief	Get the time an item has been in the queue
+ *
+ * @param	index	Index of node in queue
+ * @param	queue	Target queue
+ * @returns	The time the item has been in the queue. Max of USHRT_MAX
+ */
+uint16_t getTimeInQueue(unsigned index, queue_t *queue);
 
 /**
 * FUNCTION:			remove_queue_item

@@ -57,6 +57,7 @@ static queueItemPtr_t newNode(void* item, uint8_t age)
 	queueItem->prev = NULL;
 	queueItem->next = NULL;
 	queueItem->age = age;
+	queueItem->timeInQueue = 0;
 	return queueItem;
 }
 
@@ -270,6 +271,27 @@ int setAge(unsigned index, uint8_t age, queue_t *queue)
 	return 0;
 }
 
+uint16_t getTimeInQueue(unsigned index, queue_t *queue)
+{
+	if (index == 0)
+	{
+		Fprintf(stderr, "Warning in queue.getTimeInQueue(): Passed 0 as index to a data structure that start at index 1. SHAME!\n");
+		index = 1;
+	}
+	if (index > queue->size)
+	{
+		Fprintf(stderr, "Warning in queue.getTimeInQueue(): Passed out of bounds index.\n");
+		return 0;
+	}
+
+	queueItem_t *entry = queue->firstCommand;
+	for (unsigned i = 1; i<index; i++)
+	{
+		entry = entry->next;
+	}
+	return entry->timeInQueue;
+}
+
 void* remove_queue_item(int index, queuePtr_t queue)
 {
 	if (index == 0)
@@ -360,6 +382,8 @@ void age_queue(queuePtr_t queue, uint8_t increment)
 		#ifdef DEBUG
 		Printf("queue.age_queue(): New age: %u\n", current->age);
 		#endif
+
+		current->timeInQueue = ((uint16_t)(current->timeInQueue + increment) < current->timeInQueue) ? USHRT_MAX : current->timeInQueue + increment;
 	}
 }
 
@@ -379,7 +403,7 @@ void print_queue(queuePtr_t queue, int index, bool all)
 		if (x == index || all) 
 		{
 			// shortener variable for readability
-			Printf("Index: %2u\t, Age = %3u, Address = 0x%llX\n", temp->index, temp->age, (unsigned)&temp->item);
+			Printf("Index: %2u\t, Age:%3u, TIQ:%u, Address:0x%llX\n", temp->index, temp->age, temp->timeInQueue, (unsigned)&temp->item);
 
 			if (temp->next != NULL)
 			{
