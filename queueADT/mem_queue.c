@@ -37,7 +37,7 @@ void clean_queue(queuePtr_t list)
 
 	while (!is_empty(list))
 	{
-		free(remove_queue_item(0,list));
+		free(remove_queue_item(1,list));
 	}
 	free(list);
 }
