@@ -566,9 +566,6 @@ void inOrderExecution()
 			continue;				
 		}
 		int timeTillCmd =  updateCmdState(command);
-		#ifdef VERBOSE
-		writeOutput(0, "%llu: Processing request at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
-		#endif
 		#ifdef DEBUG
 		Printf("mem_sim.inOrderExecution():At index %u: Age:%u nextCmd:%s Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u\n", i, timeTillCmd, nextCmdToString(command->nextCmd), command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 		#endif
@@ -614,11 +611,8 @@ void inOrderExecution()
 
 uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule)
 {
-	#ifdef VERBOSE
-	writeOutput(0, "%llu: Request is not ready or cannot be fit in before a higher priority request. Reserving time %d in the schedule.\n", currentTime, cmdTime);
-	#endif
 	if (schedule->bank_op[bank_number(command)] == NONE ||
-		(cmdTime + bank_recoveryTime(command->nextCmd, schedule->bank_op[bank_number(command)]) < schedule->bank_time[bank_number(command)] ))
+		(cmdTime + bank_recoveryTime(command->nextCmd, schedule->bank_op[bank_number(command)]) <= schedule->bank_time[bank_number(command)] ))
 	{
 		schedule->bank_op[bank_number(command)] = command->nextCmd;
 		schedule->bank_time[bank_number(command)] = cmdTime;
@@ -635,7 +629,7 @@ uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *sched
 	}
 
 	if (schedule->grp_op[command->bankGroups] == NONE ||
-		(cmdTime + group_recoveryTime(command->nextCmd, schedule->grp_op[command->bankGroups]) < schedule->grp_time[command->bankGroups]))
+		(cmdTime + group_recoveryTime(command->nextCmd, schedule->grp_op[command->bankGroups]) <= schedule->grp_time[command->bankGroups]))
 	{
 		schedule->grp_op[command->bankGroups] = command->nextCmd;
 		schedule->grp_time[command->bankGroups] = cmdTime;
@@ -652,7 +646,7 @@ uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *sched
 	}
 
 	if (schedule->dimm_op == NONE ||
-		(cmdTime + dimm_recoveryTime(command->nextCmd, schedule->dimm_op) < schedule->dimm_time))
+		(cmdTime + dimm_recoveryTime(command->nextCmd, schedule->dimm_op) <= schedule->dimm_time))
 	{
 		schedule->dimm_op = command->nextCmd;
 		schedule->dimm_time = cmdTime;
