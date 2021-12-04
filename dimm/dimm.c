@@ -41,7 +41,7 @@ void dimm_deinit(dimm_t *dimm)
 
 int dimm_canActivate(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime)
 {
-	// checks for a valid dimm pointer and group number, will return error -2 if bad arguments
+	
 	if (dimm_checkArgs(dimm, group) < 0)
 	{
 		Fprintf(stderr, "Error in dimm.dimm_canActivate(): Bad arguments.\n");
@@ -78,6 +78,7 @@ int dimm_activate(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
 	int activateTime = group_activate(dimm->group[group], bank, row, currentTime);
 	if (activateTime > 0)
 	{
+        // minimum amount of time until dimm can be activated (assumes different bank group being activated)
 		dimm->nextActivate = currentTime + TRRD_S * SCALE_FACTOR;
 	}
 	else
@@ -94,7 +95,8 @@ int dimm_canPrecharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long
 		Fprintf(stderr, "Error in dimm.dimm_canPrecharge(): Bad arguments.\n");
 		return -2;
 	}
-
+    // calls group and bank "canPrecharge" functions to determine if desired bank can precharge
+    // returns the largest of the next time a group of desired bank can precharge
 	return group_canPrecharge(dimm->group[group], bank, currentTime);
 }
 
@@ -105,13 +107,14 @@ int dimm_precharge(dimm_t *dimm, unsigned group, unsigned bank, unsigned long lo
 		Fprintf(stderr, "Error in dimm.dimm_precharge(): Bad arguments.\n");
 		return -2;	
 	}
-	
+
+	// minimum time until the desired bank is done precharging
 	int prechargeTime = group_precharge(dimm->group[group], bank, currentTime);
 	if (prechargeTime < 0)
 	{
 		Fprintf(stderr, "Error in dimm.dimm_precharge(): Unable to precharge group %u.\n", group);
 	}
-	return prechargeTime;
+	return prechargeTime; // return either error code or minimum time until desired bank is precharged
 }
 
 int dimm_canRead(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
@@ -121,14 +124,17 @@ int dimm_canRead(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsi
 		Fprintf(stderr, "Error in dimm.dimm_canRead(): Bad arguments.\n");
 		return -2;	
 	}
-
+    
+    // calls group and bank "canRead" functions to determine if desired bank row can be read from
 	int groupReadTime = group_canRead(dimm->group[group], bank, row, currentTime);
 	if (groupReadTime < 0)
 	{
-		return groupReadTime;
+		return groupReadTime; // returns error code or minimum time until bank row can be read from
 	}
 	
+    // minimum time until this dimm can perform another read command
 	int dimmReadTime = (dimm->nextRead > currentTime) ? dimm->nextRead - currentTime : 0;
+    // compares minimum time dimm can read to minimum time desired bank row can be read and returns the larger
 	return (dimmReadTime < groupReadTime) ? groupReadTime : dimmReadTime;
 }
 
@@ -146,16 +152,19 @@ int dimm_read(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigne
 		Fprintf(stderr, "Error in dimm.dimm_read(): Dimm not ready to read. %llu cycles remain.\n",dimm->nextRead - currentTime);
 		return -1;
 	}
+    // time that it will take to perform read to desired bank row if possible
 	int readTime = group_read(dimm->group[group], bank, row, currentTime);
 	if (readTime > 0)
 	{
+        // if row can be read rn, this is minimum time that dimm can possibly perform subsequent read
 		dimm->nextRead = dimm->nextWrite = currentTime + TCCD_S * SCALE_FACTOR;
 	}
 	else
 	{
 		Fprintf(stderr, "Error in dimm.dimm_read(): Could not read from group %u.\n", group);
 	}
-	return readTime;
+
+	return readTime; // returns error code
 }
 
 int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime)
@@ -165,14 +174,16 @@ int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
 		Fprintf(stderr, "Error in dimm.dimm_canWrite(): Bad arguments.\n");
 		return -2;	
 	}
-
+    // calls group and desired bank "canWrite" functions to determine if/minimum time until group and bank can be written
 	int groupWriteTime = group_canWrite(dimm->group[group], bank, row, currentTime);
 	if (groupWriteTime < 0)
 	{
 		return groupWriteTime;
 	}
 	
+    // time until this dimm can be written to again
 	int dimmWriteTime = (dimm->nextWrite > currentTime) ? dimm->nextWrite - currentTime : 0;
+    // compares the minimum time until group or dimm can be written to and returns the larger
 	return (dimmWriteTime < groupWriteTime) ? groupWriteTime : dimmWriteTime;
 }
 
@@ -189,17 +200,20 @@ int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsign
 		Fprintf(stderr, "Error in dimm.dimm_write(): Dimm not ready to write. %llu cycles remain.\n",dimm->nextWrite - currentTime);
 		return -1;
 	}
+    // time that a write to a desired bank row will take if possible
 	int writeTime = group_write(dimm->group[group], bank, row, currentTime);
 	if (writeTime > 0)
 	{
+        // write commenced, minimum time stamp that dimm can be written to again set
 		dimm->nextWrite = currentTime + TCCD_S * SCALE_FACTOR;
+        // minimum time stamp that dimm can be read from again set
 		dimm->nextRead = currentTime + (CWL + TBURST + TWTR_S) * SCALE_FACTOR;
 	}
 	else
 	{
 		Fprintf(stderr, "Error in dimm.dimm_write(): Could not write to group %u.\n", group);
 	}
-	return writeTime;
+	return writeTime; // returns time until data written to dimm / desired bank row
 }
 
 char* operationToString(dimm_operation_t operation)
