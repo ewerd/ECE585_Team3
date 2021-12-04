@@ -143,7 +143,7 @@ int prepCommand(parserPtr_t parser)
 
 	parser->nextLine->cpuCycle = time;
 	parser->nextLine->operation = (operation_t)commandInt;
-	parser->nextLine->nextCmd = ACCESS;
+	parser->nextLine->nextCmd = ((operation_t)commandInt == WR) ? WRITE : READ;
 	parser->nextLine->address = address;
 	parser->nextLine->rows = address >> 18;
 	parser->nextLine->upperColumns = (address & 0x3FC00) >> 10;
@@ -168,9 +168,9 @@ const char* getCommandString(operation_t command)
 {
    switch (command) 
    {
-      case   READ: return "READ";
-	  case  WRITE: return "WRITE";
-	  case IFETCH: return "IFETCH";
+	case RD: return "READ";
+	case WR: return "WRITE";
+	case IFETCH: return "IFETCH";
    }
    return "ERROR";
 }
@@ -179,9 +179,11 @@ const char* nextCmdToString(memCmd_t cmd)
 {
 	switch(cmd)
 	{
-		case ACCESS: return "ACCESS";
+		case READ: return "READ";
+		case WRITE: return "WRITE";
 		case ACTIVATE: return "ACTIVATE";
 		case PRECHARGE: return "PRECHARGE";
+		case NONE: return "NONE";
 		case REMOVE: return "REMOVE";
 	}
 	return "nextCmd NOT SET";

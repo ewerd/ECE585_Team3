@@ -12,8 +12,12 @@ MemoryController.h
 #include <stdbool.h>
 
 // Define Operation Enum
-typedef enum _operation_e { READ, WRITE, IFETCH } operation_t;
-typedef enum {REMOVE, ACCESS, ACTIVATE, PRECHARGE} memCmd_t;
+typedef enum _operation_e { RD, WR, IFETCH } operation_t;
+
+#ifndef MEMCMD_T_
+#define MEMCMD_T_
+typedef enum {REMOVE, READ, WRITE, ACTIVATE, PRECHARGE, NONE} memCmd_t;
+#endif
 
 // Struct for memory access command from trace file
 typedef struct _cpu_command_s 
