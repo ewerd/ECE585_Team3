@@ -143,14 +143,15 @@ int group_read(bGroup_t *group, unsigned bank, unsigned row, unsigned long long 
 	int readTime = bank_read(group->bank[bank], row, currentTime);
 	if (readTime > 0)
 	{
-		group->nextRead = currentTime + TCCD_L * SCALE_FACTOR;
+		// minimum time stamp for next access to same bank group (TCCD_L)
+        group->nextRead = currentTime + TCCD_L * SCALE_FACTOR;
 		group->nextWrite = currentTime + TCCD_L * SCALE_FACTOR;
 	}
 	else
 	{
 		Fprintf(stderr, "Error in group.group_read(): Unable to read from bank %u.\n", bank);
 	}
-	return readTime;	
+	return readTime; // return time until all data is output from read
 }
 
 int group_canWrite(bGroup_t *group, unsigned bank, unsigned row, unsigned long long currentTime)
@@ -160,14 +161,17 @@ int group_canWrite(bGroup_t *group, unsigned bank, unsigned row, unsigned long l
 		Fprintf(stderr, "Error in group.group_canWrite(): Bad arguments passed.\n");
 		return -2;
 	}
-
+    // time until desired bank in bank group can be written to
 	int bankWriteTime = bank_canWrite(group->bank[bank], row, currentTime);
 	if (bankWriteTime < 0)
 	{
 		return bankWriteTime;
 	}
-
+    
+    // time until this bank group can be written to
 	int groupWriteTime = (group->nextWrite > currentTime) ? group->nextWrite - currentTime : 0;
+
+    // return larger of bank group write time or desired bank write time
 	return (bankWriteTime > groupWriteTime) ? bankWriteTime : groupWriteTime;
 }
 
@@ -178,23 +182,25 @@ int group_write(bGroup_t *group, unsigned bank, unsigned row, unsigned long long
 		Fprintf(stderr, "Error in group.group_Write(): Bad arguments passed.\n");
 		return -2;
 	}
-
 	if (currentTime < group->nextWrite)
 	{
 		Fprintf(stderr, "Error in group.group_Write(): Group not ready to write. %llu cycles remain.\n", group->nextWrite - currentTime);
 		return -1;
 	}
+    // if able to write, minimum time until bank is finished writing
 	int writeTime = bank_write(group->bank[bank], row, currentTime);
 	if (writeTime > 0)
 	{
+        // minimum time stamp that bank group can perform another write
 		group->nextWrite = currentTime + TCCD_L * SCALE_FACTOR;
+        // minimum time stamp that bank group can perform another read
 		group->nextRead = currentTime + (CWL + TBURST + TWTR_L) * SCALE_FACTOR;
 	}
 	else
 	{
 		Fprintf(stderr, "Error in group.group_write(): Unable to write to bank %u.\n", bank);
 	}
-	return writeTime;	
+	return writeTime; // return time until write to desired bank is completed
 }
 
 /**
