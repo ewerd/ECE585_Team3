@@ -570,7 +570,7 @@ void inOrderExecution()
 		writeOutput(0, "%llu: Processing request at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 		#endif
 		#ifdef DEBUG
-		Printf("mem_sim.inOrderExecution():At index %u: Age:%u nextCmd:%s Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u\n", i, timeTillCmd, nextCmdToString(command->nextCmd))command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
+		Printf("mem_sim.inOrderExecution():At index %u: Age:%u nextCmd:%s Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u\n", i, timeTillCmd, nextCmdToString(command->nextCmd), command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 		#endif
 		if (timeTillCmd > 0)
 		{
