@@ -53,9 +53,9 @@ echo "Test Write to Read to Write, all Same Row"
 diff -u testing/ground_truth/writeReadWriteSameRow_output.txt <(./sim.exe testing/test_traces/writeReadWriteSameRow_test.txt) 	
 
 echo "Test multiple commands received on the same CPU clock cycle"
-diff -u testing/ground_truth/sameClockCycle_test.txt <(./sim.exe testing/test_traces/sameClockCycle_test.txt) 			
+diff -u testing/ground_truth/sameClockCycle_output.txt <(./sim.exe testing/test_traces/sameClockCycle_test.txt) 			
 
 echo "Test consecutive memory accesses to all bank groups and banks"
-diff -u testing/ground_truth/allBanksBankGroups_test.txt <(./sim.exe testing/test_traces/allBanksBankGroups_test.txt)
+diff -u testing/ground_truth/allBanksBankGroups_output.txt <(./sim.exe testing/test_traces/allBanksBankGroups_test.txt)
 echo "Test consecutive memory accesses to all bank groups and banks with Read Write Read Situations"
 diff -u testing/ground_truth/readWriteReadAllBanksBankGroups_output.txt <(./sim.exe testing/test_traces/readWriteReadAllBanksBankGroups_test.txt)
