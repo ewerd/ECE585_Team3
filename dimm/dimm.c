@@ -205,8 +205,9 @@ int dimm_read(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigne
 	int readTime = group_read(dimm->group[group], bank, row, currentTime);
 	if (readTime > 0)
 	{
-        // if row can be read rn, this is minimum time that dimm can possibly perform subsequent read
-		dimm->nextRead = dimm->nextWrite = currentTime + TCCD_S * SCALE_FACTOR;
+        	// if row can be read right now, this is minimum time that dimm can possibly perform subsequent read
+		dimm->nextRead = currentTime + D_READ_TO_READ;
+		dimm->nextWrite = currentTime + D_READ_TO_WRITE;
 	}
 	else
 	{

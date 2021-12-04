@@ -19,6 +19,7 @@
 #define TRRD_S		4 //Time between row activations in different bank groups
 #define TCCD_S		4 //Time between reads in different bank groups
 #define TWTR_S		4 //Time after a write burst finishes before a read can be issued to another bank group
+#define TRTW		4 //Time after a read is issued before a write can be issued to prevent data bus conflict
 #define TRRD_L		6 //Time between row activations in the same bank group
 #define TCCD_L		8 //Time between reads to the same bank group
 #define TWTR_L		12//Time after a write burst finishes before a read can be issued to the same bank group
@@ -41,7 +42,7 @@
 #define D_READ_TO_PRECHARGE	SCALE_FACTOR
 #define D_READ_TO_ACTIVATE	SCALE_FACTOR
 #define D_READ_TO_READ		TCCD_S*SCALE_FACTOR
-#define D_READ_TO_WRITE		TCCD_S*SCALE_FACTOR
+#define D_READ_TO_WRITE		(TCCD_S+TRTW)*SCALE_FACTOR
 #define D_WRITE_TO_PRECHARGE	SCALE_FACTOR
 #define D_WRITE_TO_ACTIVATE	SCALE_FACTOR
 #define D_WRITE_TO_READ		(CWL+TBURST+TWTR_S)*SCALE_FACTOR
