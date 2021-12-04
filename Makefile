@@ -33,6 +33,10 @@ verbose : $(OBJS)
 debug : $(OBJS)
 	$(CC) $(CFLAGS) -DDEBUG -DVERBOSE -o $(EXE) $(SRC)
 
+.PHONY: test
+test: sim
+	./testing/test_output.sh
+
 #.PHONY to inform Make to not associate clean with a file named clean
 .PHONY: clean
 clean:
