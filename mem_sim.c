@@ -23,6 +23,18 @@
 
 #define MAX_TIME_IN_QUEUE	500
 
+typedef struct{
+	uint8_t			dimm_time;
+	memCmd_t		dimm_op;
+	uint8_t			grp_time[BANK_GROUPS];
+	memCmd_t		grp_op[BANK_GROUPS];
+	uint8_t			bank_time[BANK_GROUPS*BANKS_PER_GROUP];
+	memCmd_t		bank_op[BANK_GROUPS*BANKS_PER_GROUP];
+}dimmSchedule_t;
+
+//Macro to extract absolute bank number from an inputCommandPtr_t
+#define bank_number(X)	((X)->bankGroups*BANKS_PER_GROUP+(X)->banks)
+
 /*
  * Helper function declarations.
  */ 
@@ -35,15 +47,21 @@ unsigned long long advanceTime(void);
 unsigned long long getTimeJump(void);
 int updateCommands(void);
 void serviceCommands(void);
-bool inOrderExecution(bool* cmdsRdy);
+//bool inOrderExecution(bool* cmdsRdy);
+void inOrderExecution(void);
 bool prioritizeCommand(bool *cmdsRdy);
 int sendMemCmd(inputCommandPtr_t command);
 unsigned scanCommands(bool* cmdsRdy);
 int updateCmdState(inputCommandPtr_t command);
+void reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule);
 
 #ifdef VERBOSE
 void writeOutput(uint8_t delay, const char *format, ...);
 void printOutput(void);
+#endif
+
+#ifdef DEBUG
+void printSchedule(dimmSchedule_t *sched);
 #endif
 
 /*
@@ -515,6 +533,8 @@ char *parseArgs(int argc, char **argv)
  */
 void serviceCommands()
 {
+//--------------------------------------------------------------------------------------
+/*
 	bool cmdsRdy[commandQueue->size];
 	unsigned numRdyCmds = scanCommands(cmdsRdy);
 	#ifdef DEBUG
@@ -541,7 +561,10 @@ void serviceCommands()
 		{
 			inOrderExecution(cmdsRdy);
 		}
-	}
+	}*/
+//----------------------------------------------------------------------------------------
+
+	inOrderExecution();
 }
 
 /**
@@ -553,10 +576,10 @@ void serviceCommands()
  *			in the commandQueue is ready to be serviced by the DIMM.
  * @return	True if a command is issued to the DIMM. False otherwise.
  */
-bool inOrderExecution(bool* cmdsRdy)
+//TODO bool inOrderExecution(bool* cmdsRdy)
+void inOrderExecution()
 {
-	bool bankGroupTouched[4] = {false, false, false, false};
-	// FOR EACH command in the queue:
+/*	// FOR EACH command in the queue:
 	for (unsigned i = 1; i <= commandQueue->size; i++)
 	{
 		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
@@ -577,6 +600,111 @@ bool inOrderExecution(bool* cmdsRdy)
 		}
 	}
 	return false;
+*///------------------------------------------------------------------------------------------------------------------------
+
+	dimmSchedule_t schedule;
+	schedule.dimm_op = NONE;
+	for (int i = 0; i < BANK_GROUPS; i++)
+		schedule.grp_op[i] = NONE;
+	for (int i = 0; i < BANK_GROUPS*BANKS_PER_GROUP; i++)
+		schedule.bank_op[i] = NONE;
+
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
+		if (command->nextCmd == REMOVE)
+		{
+			if (getAge(i, commandQueue) == 0)
+			{
+				#ifdef VERBOSE
+				writeOutput(0, "%llu: Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
+				#endif
+				free(queueRemove(commandQueue,i));
+				i--;
+			}
+			continue;				
+		}
+		int timeTillCmd =  updateCmdState(command);
+		#ifdef VERBOSE
+		writeOutput(0, "%llu: Processing request at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
+		#endif
+		#ifdef DEBUG
+		Printf("Age of command is %u and nextCmd is %s.\n", timeTillCmd, nextCmdToString(command->nextCmd));
+		#endif
+		if (timeTillCmd > 0)
+		{
+			reserveTime(timeTillCmd, command, &schedule);
+			continue;
+		}
+		
+		if (dimm_recoveryTime(command->nextCmd, schedule.dimm_op) > schedule.dimm_time)
+		{
+			uint8_t newAge = schedule.dimm_time + dimm_recoveryTime(schedule.dimm_op, command->nextCmd);
+			setAge(i, newAge, commandQueue);
+			reserveTime(newAge, command, &schedule);
+			continue;
+		}
+		if (group_recoveryTime(command->nextCmd, schedule.grp_op[command->bankGroups]) > schedule.grp_time[command->bankGroups])
+		{
+			uint8_t newAge = schedule.grp_time[command->bankGroups] + group_recoveryTime(schedule.grp_op[command->bankGroups], command->nextCmd);
+			setAge(i, newAge, commandQueue);
+			reserveTime(newAge, command, &schedule);
+			continue;
+		}
+		if (bank_recoveryTime(command->nextCmd, schedule.bank_op[bank_number(command)]) > schedule.bank_time[bank_number(command)])
+		{
+			uint8_t newAge = schedule.bank_time[bank_number(command)] + bank_recoveryTime(schedule.bank_op[bank_number(command)], command->nextCmd);
+			setAge(i, newAge, commandQueue);
+			reserveTime(newAge, command, &schedule);
+			continue;
+		}
+		setAge(i, sendMemCmd(command), commandQueue);
+		return;
+	}
+}
+
+void reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule)
+{
+	#ifdef VERBOSE
+	writeOutput(0, "%llu: Request is not ready or cannot be fit in before a higher priority request. Reserving time %d in the schedule.\n", currentTime, cmdTime);
+	#endif
+	if (schedule->bank_op[bank_number(command)] == NONE ||
+		(cmdTime + bank_recoveryTime(command->nextCmd, schedule->bank_op[bank_number(command)]) < schedule->bank_time[bank_number(command)] ))
+	{
+		schedule->bank_op[bank_number(command)] = command->nextCmd;
+		schedule->bank_time[bank_number(command)] = cmdTime;
+	}
+	else
+	{
+		#ifdef DEBUG
+		printSchedule(schedule);
+		#endif
+		return;
+	}
+
+	if (schedule->grp_op[command->bankGroups] == NONE ||
+		(cmdTime + group_recoveryTime(command->nextCmd, schedule->grp_op[command->bankGroups]) < schedule->grp_op[command->bankGroups]))
+	{
+		schedule->grp_op[command->bankGroups] = command->nextCmd;
+		schedule->grp_time[command->bankGroups] = cmdTime;
+	}
+	else
+	{
+		#ifdef DEBUG
+		printSchedule(schedule);
+		#endif
+		return;
+	}
+
+	if (schedule->dimm_op == NONE ||
+		(cmdTime + dimm_recoveryTime(command->nextCmd, schedule->dimm_op) < schedule->dimm_op))
+	{
+		schedule->dimm_op = command->nextCmd;
+		schedule->dimm_time = cmdTime;
+	}
+	#ifdef DEBUG
+	printSchedule(schedule);
+	#endif
 }
 
 /**
@@ -655,33 +783,33 @@ int sendMemCmd(inputCommandPtr_t command)
 	int retVal;
 	switch(command->nextCmd)
 	{
-		case ACCESS:
+		case WRITE:
 			command->nextCmd = REMOVE;
-			if (command->operation == WRITE)
-			{
-				retVal = dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
-				#ifdef VERBOSE
-				writeOutput(0, "%llu: Group %u, Bank %u received write command to row %u, upper column %u", currentTime, command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal-(TBURST*SCALE_FACTOR), "%llu: Group %u, Bank %u has begun latching data and storing in row %u, upper column %u", currentTime+retVal-(TBURST*SCALE_FACTOR), command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal, "%llu: Group %u, Bank %u has completed writing to row %u, upper column %u", currentTime+retVal, command->bankGroups, command->banks, command->rows, command->upperColumns);
-				#else
-				Fprintf(output_file, "%'26llu\tWR  %X %X %X\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-				#endif
-			}
-			else
-			{
-				retVal = dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
-				#ifdef VERBOSE
-				writeOutput(0, "%llu: Group %u, Bank %u received read command to row %u, upper column %u", currentTime, command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal-(TBURST*SCALE_FACTOR), "%llu: Group %u, Bank %u has begun bursting data from row %u, upper column %u", currentTime+retVal-(TBURST*SCALE_FACTOR), command->bankGroups, command->banks, command->rows, command->upperColumns);
-				writeOutput(retVal, "%llu: Group %u, Bank %u has completed burst from row %u, upper column %u", currentTime+retVal, command->bankGroups, command->banks, command->rows, command->upperColumns);
-				#else
-				Fprintf(output_file, "%'26llu\tRD  %X %X %X\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
-				#endif
-			}
+			retVal = dimm_write(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			#ifdef VERBOSE
+			writeOutput(0, "%llu: Group %u, Bank %u received write command to row %u, upper column %u", currentTime, command->bankGroups, command->banks, command->rows, command->upperColumns);
+			writeOutput(retVal-(TBURST*SCALE_FACTOR), "%llu: Group %u, Bank %u has begun latching data and storing in row %u, upper column %u", currentTime+retVal-(TBURST*SCALE_FACTOR), command->bankGroups, command->banks, command->rows, command->upperColumns);
+			writeOutput(retVal, "%llu: Group %u, Bank %u has completed writing to row %u, upper column %u", currentTime+retVal, command->bankGroups, command->banks, command->rows, command->upperColumns);
+			#else
+			Fprintf(output_file, "%'26llu\tWR  %X %X %X\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			#endif
+			break;
+		case READ:
+			command->nextCmd = REMOVE;
+			retVal = dimm_read(dimm, command->bankGroups, command->banks, command->rows, currentTime);
+			#ifdef VERBOSE
+			writeOutput(0, "%llu: Group %u, Bank %u received read command to row %u, upper column %u", currentTime, command->bankGroups, command->banks, command->rows, command->upperColumns);
+			writeOutput(retVal-(TBURST*SCALE_FACTOR), "%llu: Group %u, Bank %u has begun bursting data from row %u, upper column %u", currentTime+retVal-(TBURST*SCALE_FACTOR), command->bankGroups, command->banks, command->rows, command->upperColumns);
+			writeOutput(retVal, "%llu: Group %u, Bank %u has completed burst from row %u, upper column %u", currentTime+retVal, command->bankGroups, command->banks, command->rows, command->upperColumns);
+			#else
+			Fprintf(output_file, "%'26llu\tRD  %X %X %X\n", currentTime, command->bankGroups, command->banks, (((unsigned long)command->upperColumns)<<3) + command->lowerColumns);
+			#endif
 			break;
 		case ACTIVATE:
-			command->nextCmd = ACCESS;
+			if (command->operation == WR)
+				command->nextCmd = WRITE;
+			else
+				command->nextCmd = READ;
 			retVal = dimm_activate(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 			#ifdef VERBOSE
 			writeOutput(0, "%llu: Group %u, Bank %u has begun activating row %u", currentTime, command->bankGroups, command->banks, command->rows);
@@ -715,7 +843,7 @@ int sendMemCmd(inputCommandPtr_t command)
  * @fn		scanCommands
  * @brief	Updates the state of all requests in the command queue
  *
- * @detail	Updates the age (time until next action required) and next DRAM command (ACCESS, ACTIVATE, PRECHARGE, or
+ * @detail	Updates the age (time until next action required) and next DRAM command (READ, WRITE, ACTIVATE, PRECHARGE, or
  *		REMOVE(from queue)) for each memory request in the command queue. Updates the array of bools to reflect
  *		which requests can be serviced this clock cycle. A value of true in cmdsRdy[x] indicates that the
  *		request in the command queue at index 'x' is ready to have a DRAM command issued.
@@ -771,12 +899,12 @@ unsigned scanCommands(bool* cmdsRdy)
  */
 int updateCmdState(inputCommandPtr_t command)
 {		
-	int timeTillCmd = (command->operation == WRITE) ?	
+	int timeTillCmd = (command->operation == WR) ?	
 		dimm_canWrite(dimm, command->bankGroups, command->banks, command->rows, currentTime) :
 		dimm_canRead(dimm, command->bankGroups, command->banks, command->rows, currentTime);
 	if (timeTillCmd >= 0)
 	{
-		command->nextCmd = ACCESS;
+		command->nextCmd = (command->operation == WR) ? WRITE : READ;
 		return timeTillCmd;
 	}
 	if (timeTillCmd == -1)
@@ -822,5 +950,24 @@ void printOutput(void)
 		Fprintf(output_file, "%s\n", output);
 		free(output);
 	}
+}
+#endif
+
+#ifdef DEBUG
+void printSchedule(dimmSchedule_t *sched)
+{
+	Printf("----------Cmd Schedule----------\n");
+	Printf("|-DIMM: %9s in %u\n", nextCmdToString(sched->dimm_op), sched->dimm_time);
+	Printf("|-------------------------------\n");
+	for (int i = 0; i < BANK_GROUPS; i++)
+	{
+		Printf("|---Group%2u: %9s in %u\n", i, nextCmdToString(sched->grp_op[i]), sched->grp_time[i]);
+		for (int j = 0; j < BANKS_PER_GROUP; j++)
+		{
+			Printf("|-----Bank%2u: %9s in %u\n", j, nextCmdToString(sched->bank_op[i*BANKS_PER_GROUP+j]), sched->bank_time[i*BANKS_PER_GROUP+j]);
+		}
+		Printf("|-------------------------------\n");
+	}
+	Printf("--------------------------------\n");
 }
 #endif
