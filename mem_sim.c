@@ -47,13 +47,12 @@ unsigned long long advanceTime(void);
 unsigned long long getTimeJump(void);
 int updateCommands(void);
 void serviceCommands(void);
-//bool inOrderExecution(bool* cmdsRdy);
 void inOrderExecution(void);
 bool prioritizeCommand(bool *cmdsRdy);
 int sendMemCmd(inputCommandPtr_t command);
 unsigned scanCommands(bool* cmdsRdy);
 int updateCmdState(inputCommandPtr_t command);
-void reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule);
+uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule);
 
 #ifdef VERBOSE
 void writeOutput(uint8_t delay, const char *format, ...);
@@ -533,37 +532,6 @@ char *parseArgs(int argc, char **argv)
  */
 void serviceCommands()
 {
-//--------------------------------------------------------------------------------------
-/*
-	bool cmdsRdy[commandQueue->size];
-	unsigned numRdyCmds = scanCommands(cmdsRdy);
-	#ifdef DEBUG
-		Printf("mem_sim.serviceCommands(): %u command(s) ready\n", numRdyCmds);
-		Printf("mem_sim.serviceCommands(): cmdsRdy array:\n[");
-		for (int i = 1; i <= commandQueue->size; i++)
-		{
-			if (cmdsRdy[i-1])
-				Printf("t");
-			else
-				Printf("f");
-			if (i != commandQueue->size)
-				Printf("\t");
-		}
-		Printf("]\n");
-	#endif
-	if (numRdyCmds > 0)
-	{
-		if (optimizedExecution)
-		{
-			prioritizeCommand(cmdsRdy);
-		}
-		else
-		{
-			inOrderExecution(cmdsRdy);
-		}
-	}*/
-//----------------------------------------------------------------------------------------
-
 	inOrderExecution();
 }
 
@@ -572,36 +540,9 @@ void serviceCommands()
  * @brief	Sends command to DIMM with a schedule for in order execution
  *
  * @detail	Determines which command, if any, should be issued to the DIMM this clock tick
- * @param	cmdsRdy	An array of bools. A true value means that the corresponding command at the same index
- *			in the commandQueue is ready to be serviced by the DIMM.
- * @return	True if a command is issued to the DIMM. False otherwise.
  */
-//TODO bool inOrderExecution(bool* cmdsRdy)
 void inOrderExecution()
 {
-/*	// FOR EACH command in the queue:
-	for (unsigned i = 1; i <= commandQueue->size; i++)
-	{
-		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
-		if (command->nextCmd != REMOVE)//Ignore commands that are just waiting for data. We're done with them
-		{
-			if (bankGroupTouched[command->bankGroups] == false && cmdsRdy[i-1] == true)
-			{
-				#ifdef DEBUG
-				Printf("mem_sim: Servicing command at index %d\n",i);
-				#endif
-				#ifdef VERBOSE
-				writeOutput(0, "%llu: Priority request identified at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
-				#endif
-				setAge(i, sendMemCmd(command), commandQueue);
-				return true;
-			}
-			//bankGroupTouched[command->bankGroups] = true;
-		}
-	}
-	return false;
-*///------------------------------------------------------------------------------------------------------------------------
-
 	dimmSchedule_t schedule;
 	schedule.dimm_op = NONE;
 	for (int i = 0; i < BANK_GROUPS; i++)
@@ -629,11 +570,11 @@ void inOrderExecution()
 		writeOutput(0, "%llu: Processing request at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 		#endif
 		#ifdef DEBUG
-		Printf("Age of command is %u and nextCmd is %s.\n", timeTillCmd, nextCmdToString(command->nextCmd));
+		Printf("At index %u: Age of command is %u and nextCmd is %s.\n", i, timeTillCmd, nextCmdToString(command->nextCmd));
 		#endif
 		if (timeTillCmd > 0)
 		{
-			reserveTime(timeTillCmd, command, &schedule);
+			setAge(i, reserveTime(timeTillCmd, command, &schedule), commandQueue);
 			continue;
 		}
 		
@@ -663,7 +604,7 @@ void inOrderExecution()
 	}
 }
 
-void reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule)
+uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule)
 {
 	#ifdef VERBOSE
 	writeOutput(0, "%llu: Request is not ready or cannot be fit in before a higher priority request. Reserving time %d in the schedule.\n", currentTime, cmdTime);
@@ -679,7 +620,7 @@ void reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule
 		#ifdef DEBUG
 		printSchedule(schedule);
 		#endif
-		return;
+		return schedule->bank_time[bank_number(command)] + SCALE_FACTOR;
 	}
 
 	if (schedule->grp_op[command->bankGroups] == NONE ||
@@ -693,18 +634,26 @@ void reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule
 		#ifdef DEBUG
 		printSchedule(schedule);
 		#endif
-		return;
+		return schedule->grp_time[command->bankGroups] + SCALE_FACTOR;
 	}
 
 	if (schedule->dimm_op == NONE ||
-		(cmdTime + dimm_recoveryTime(command->nextCmd, schedule->dimm_op) < schedule->dimm_op))
+		(cmdTime + dimm_recoveryTime(command->nextCmd, schedule->dimm_op) < schedule->dimm_time))
 	{
 		schedule->dimm_op = command->nextCmd;
 		schedule->dimm_time = cmdTime;
 	}
+	else
+	{
+		#ifdef DEBUG
+		printSchedule(schedule);
+		#endif
+		return schedule->dimm_time + SCALE_FACTOR;
+	}
 	#ifdef DEBUG
 	printSchedule(schedule);
 	#endif
+	return cmdTime;
 }
 
 /**
