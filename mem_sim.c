@@ -570,7 +570,7 @@ void inOrderExecution()
 		writeOutput(0, "%llu: Processing request at index %u: Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, i, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 		#endif
 		#ifdef DEBUG
-		Printf("At index %u: Age of command is %u and nextCmd is %s.\n", i, timeTillCmd, nextCmdToString(command->nextCmd));
+		Printf("mem_sim.inOrderExecution():At index %u: Age:%u nextCmd:%s Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u\n", i, timeTillCmd, nextCmdToString(command->nextCmd))command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 		#endif
 		if (timeTillCmd > 0)
 		{
@@ -580,13 +580,18 @@ void inOrderExecution()
 		
 		if (dimm_recoveryTime(command->nextCmd, schedule.dimm_op) > schedule.dimm_time)
 		{
-			uint8_t newAge = schedule.dimm_time + dimm_recoveryTime(schedule.dimm_op, command->nextCmd);
+			#ifdef DEBUG
+			Printf("mem_sim.inOrderExecution():Blocked in dimm\n");
+			#endif
+			uint8_t newAge = reserveTime(newAge, command, &schedule); 
 			setAge(i, newAge, commandQueue);
-			reserveTime(newAge, command, &schedule);
 			continue;
 		}
 		if (group_recoveryTime(command->nextCmd, schedule.grp_op[command->bankGroups]) > schedule.grp_time[command->bankGroups])
 		{
+			#ifdef DEBUG
+			Printf("mem_sim.inOrderExecution():Blocked in bank group.\n");
+			#endif
 			uint8_t newAge = schedule.grp_time[command->bankGroups] + group_recoveryTime(schedule.grp_op[command->bankGroups], command->nextCmd);
 			setAge(i, newAge, commandQueue);
 			reserveTime(newAge, command, &schedule);
@@ -594,6 +599,9 @@ void inOrderExecution()
 		}
 		if (bank_recoveryTime(command->nextCmd, schedule.bank_op[bank_number(command)]) > schedule.bank_time[bank_number(command)])
 		{
+			#ifdef DEBUG
+			Printf("mem_sim.inOrderExecution():Blocked in bank.\n");
+			#endif
 			uint8_t newAge = schedule.bank_time[bank_number(command)] + bank_recoveryTime(schedule.bank_op[bank_number(command)], command->nextCmd);
 			setAge(i, newAge, commandQueue);
 			reserveTime(newAge, command, &schedule);
@@ -614,6 +622,9 @@ uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *sched
 	{
 		schedule->bank_op[bank_number(command)] = command->nextCmd;
 		schedule->bank_time[bank_number(command)] = cmdTime;
+		#ifdef DEBUG
+		Printf("mem_sim.inOrderExecution():Reserved bank.\n");
+		#endif
 	}
 	else
 	{
@@ -624,10 +635,13 @@ uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *sched
 	}
 
 	if (schedule->grp_op[command->bankGroups] == NONE ||
-		(cmdTime + group_recoveryTime(command->nextCmd, schedule->grp_op[command->bankGroups]) < schedule->grp_op[command->bankGroups]))
+		(cmdTime + group_recoveryTime(command->nextCmd, schedule->grp_op[command->bankGroups]) < schedule->grp_time[command->bankGroups]))
 	{
 		schedule->grp_op[command->bankGroups] = command->nextCmd;
 		schedule->grp_time[command->bankGroups] = cmdTime;
+		#ifdef DEBUG
+		Printf("mem_sim.inOrderExecution():Reserved Group.\n");
+		#endif
 	}
 	else
 	{
@@ -642,6 +656,9 @@ uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *sched
 	{
 		schedule->dimm_op = command->nextCmd;
 		schedule->dimm_time = cmdTime;
+		#ifdef DEBUG
+		Printf("mem_sim.inOrderExecution():Reserved dimm.\n");
+		#endif
 	}
 	else
 	{
