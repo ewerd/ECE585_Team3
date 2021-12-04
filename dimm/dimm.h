@@ -11,6 +11,7 @@
 #ifndef DIMM_H_
 #define DIMM_H_
 
+#include <stdint.h>
 #include "group.h"
 #include "bank.h"
 #include "../wrappers.h"
@@ -30,6 +31,21 @@
 #define TBURST		4 //Time from start to finish of data burst
 #define CWL		20//Time from write command until data must be available on bus
 #define SCALE_FACTOR	2 //Ratio of CPU clock speed to MEM clock speed
+
+#define D_PRECHARGE_TO_ACTIVATE	SCALE_FACTOR
+#define D_PRECHARGE_TO_RW	SCALE_FACTOR
+#define D_PRECHARGE_TO_PRECHARGE SCALE_FACTOR
+#define D_ACTIVATE_TO_PRECHARGE SCALE_FACTOR
+#define D_ACTIVATE_TO_ACTIVATE	TRRD_S*SCALE_FACTOR
+#define D_ACTIVATE_TO_RW	SCALE_FACTOR
+#define D_READ_TO_PRECHARGE	SCALE_FACTOR
+#define D_READ_TO_ACTIVATE	SCALE_FACTOR
+#define D_READ_TO_READ		TCCD_S*SCALE_FACTOR
+#define D_READ_TO_WRITE		TCCD_S*SCALE_FACTOR
+#define D_WRITE_TO_PRECHARGE	SCALE_FACTOR
+#define D_WRITE_TO_ACTIVATE	SCALE_FACTOR
+#define D_WRITE_TO_READ		(CWL+TBURST+TWTR_S)*SCALE_FACTOR
+#define D_WRITE_TO_WRITE	TCCD_S*SCALE_FACTOR
 
 typedef struct {
 	bGroup_t**		group; //Array of groups
@@ -59,6 +75,16 @@ dimm_t *dimm_init(unsigned groups, unsigned banks, unsigned rows);
  * @param	dimm	Target dimm to free
  */
 void dimm_deinit(dimm_t *dimm);
+
+/**
+ * @fn		dimm_recoveryTime
+ * @brief	Returns the amount of time after firstOp until the dimm is ready for secOp
+ *
+ * @param	firstOp	First memCmd_t to be executed
+ * @param	secOp	Second memCmd_t to be executed
+ * @return	Min time in CPU clock cycles between firstOp and secOp
+ */
+uint8_t dimm_recoveryTime(memCmd_t firstOp, memCmd_t secOp);
 
 /**
  * @fn		dimm_canActivate
@@ -184,14 +210,5 @@ int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
  *		until the command is completed. -2 if bad arguments are passed. -1 otherwise
  */
 int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime);
-
-/**
- * @fn		operationToString
- * @brief	Get string representation of an operation_t enum
- *
- * @param	operation	dimm_operation_t being encoded
- * @return	String of the operation_t name
- */
-char* operationToString(dimm_operation_t operation);
 
 #endif

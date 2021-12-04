@@ -39,6 +39,55 @@ void dimm_deinit(dimm_t *dimm)
 	free(dimm);
 }
 
+uint8_t dimm_recoveryTime(memCmd_t firstOp, memCmd_t secOp)
+{
+	if (secOp == NONE || secOp == REMOVE)
+	{
+		return 0;
+	}
+	switch(firstOp)
+	{
+		case NONE:
+		case REMOVE:
+		return 0;
+		
+		case PRECHARGE:
+		if (secOp == ACTIVATE)
+			return D_PRECHARGE_TO_ACTIVATE;
+		if (secOp == READ || secOp == WRITE)
+			return D_PRECHARGE_TO_RW;
+		if (secOp == PRECHARGE)
+			return D_PRECHARGE_TO_PRECHARGE;
+		case ACTIVATE:
+		if (secOp == PRECHARGE)
+			return D_ACTIVATE_TO_PRECHARGE;
+		if (secOp == ACTIVATE)
+			return D_ACTIVATE_TO_ACTIVATE;
+		if (secOp == READ || secOp == WRITE)
+			return D_ACTIVATE_TO_RW;
+		case READ:
+		if (secOp == PRECHARGE)
+			return D_READ_TO_PRECHARGE;
+		if (secOp == ACTIVATE)
+			return D_READ_TO_ACTIVATE;
+		if (secOp == READ)
+			return D_READ_TO_READ;
+		if (secOp == WRITE)
+			return D_READ_TO_WRITE;
+		case WRITE:
+		if (secOp == PRECHARGE)
+			return D_WRITE_TO_PRECHARGE;
+		if (secOp == ACTIVATE)
+			return D_WRITE_TO_ACTIVATE;
+		if (secOp == READ)
+			return D_WRITE_TO_READ;
+		if (secOp == WRITE)
+			return D_WRITE_TO_WRITE;
+	}
+	Fprintf(stderr, "Warning in dimm.dimm_recoveryTime(): Missing case for commands\n");
+	return 0;
+}
+
 int dimm_canActivate(dimm_t *dimm, unsigned group, unsigned bank, unsigned long long currentTime)
 {
 	
@@ -216,18 +265,6 @@ int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsign
 	return writeTime; // returns time until data written to dimm / desired bank row
 }
 
-char* operationToString(dimm_operation_t operation)
-{
-	switch (operation)
-	{
-		case(PRE):return "PRECHARGE";
-		case(ACT):return "ACTIVATE";
-		case(RD):return "READ";
-		case(WR):return "WRITE";
-		case(NONE):return "NONE";
-	}
-	return "ERROR";
-}
 
 // ------------------------------------------------------Helper Functions-------------------------------------------------------------
 

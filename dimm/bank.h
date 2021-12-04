@@ -3,14 +3,33 @@
 #ifndef BANK_H_
 #define BANK_H_
 
+#include <stdint.h>
 
-typedef enum {PRE, ACT, RD, WR, NONE} dimm_operation_t;
+#define B_PRECHARGE_TO_ACTIVATE	TRP*SCALE_FACTOR
+#define B_PRECHARGE_TO_RW	(TRP+TRCD)*SCALE_FACTOR
+#define B_PRECHARGE_TO_PRECHARGE (TRP+TRAS)*SCALE_FACTOR
+#define B_ACTIVATE_TO_PRECHARGE TRAS*SCALE_FACTOR
+#define B_ACTIVATE_TO_ACTIVATE	(TRAS+TRP)*SCALE_FACTOR
+#define B_ACTIVATE_TO_RW	TRCD*SCALE_FACTOR
+#define B_READ_TO_PRECHARGE	TRTP*SCALE_FACTOR
+#define B_READ_TO_ACTIVATE	(TRTP+TRP)*SCALE_FACTOR
+#define B_READ_TO_READ		SCALE_FACTOR
+#define B_READ_TO_WRITE		(TCAS+TBURST-CWL)*SCALE_FACTOR
+#define B_WRITE_TO_PRECHARGE	(CWL+TBURST+TWR)*SCALE_FACTOR
+#define B_WRITE_TO_ACTIVATE	(CWL+TBURST+TWR+TRP)*SCALE_FACTOR
+#define B_WRITE_TO_READ		SCALE_FACTOR
+#define B_WRITE_TO_WRITE	SCALE_FACTOR
+
+#ifndef MEMCMD_T_
+#define MEMCMD_T_
+typedef enum {REMOVE, READ, WRITE, ACTIVATE, PRECHARGE, NONE} memCmd_t;
+#endif
+
 typedef enum {PRECHARGED,ACTIVE} bankState_t;
 
 typedef struct {
 	unsigned int		row; //Track open row 
 	unsigned int		maxRows;
-	dimm_operation_t	priOp; //Tracks the current priority of this bank
 	bankState_t		state; //Current or target bank state
 	unsigned long long	nextPrecharge; //Time available for next precharge cmd (tRP)
 	unsigned long long	nextActivate; //Time available for next activate cmd (tRCD)
@@ -37,26 +56,14 @@ bank_t *bank_init(unsigned rows);
 void bank_deinit(bank_t *bank);
 
 /**
- * @fn		bank_setPriority
- * @brief	Informs the bank to prioritize a command and to block others
+ * @fn		bank_recoveryTime
+ * @brief	Returns the amount of time after firstOp until the bank is ready for secOp
  *
- * @param	bank	Pointer to the bank
- * @param	row	Number of row for read or write command. If operation != READ|WRITE then this value
- *			is not used.
- * @param	operation	The operation to prioritize
- * @param	currentTime	The current simulation time
- * @return	Time until this bank is ready for the command. -1 if the priority cannot be set due to the
- *		state of the bank. -2 if bad arguments are passed. -3 if the bank already has a priority set
+ * @param	firstOp	First memCmd_t to be executed
+ * @param	secOp	Second memCmd_t to be executed
+ * @return	Min time in CPU clock cycles between firstOp and secOp
  */
-int bank_setPriority(bank_t *bank, unsigned row, dimm_operation_t operation, unsigned long long currentTime);
-
-/**
- * @fn		bank_clrPriority
- * @brief	Clears the priority operation of a bank
- *
- * @param	bank	Pointer to the bank struct
- */
-void bank_clrPriority(bank_t *bank);
+uint8_t bank_recoveryTime(memCmd_t firstOp, memCmd_t secOp);
 
 /**
  * @fn		bank_canActivate

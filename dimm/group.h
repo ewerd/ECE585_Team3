@@ -3,12 +3,31 @@
 #ifndef GROUP_H_
 #define GROUP_H_
 
+#define G_PRECHARGE_TO_ACTIVATE	SCALE_FACTOR
+#define G_PRECHARGE_TO_RW	SCALE_FACTOR
+#define G_PRECHARGE_TO_PRECHARGE SCALE_FACTOR
+#define G_ACTIVATE_TO_PRECHARGE SCALE_FACTOR
+#define G_ACTIVATE_TO_ACTIVATE	TRRD_L*SCALE_FACTOR
+#define G_ACTIVATE_TO_RW	SCALE_FACTOR
+#define G_READ_TO_PRECHARGE	SCALE_FACTOR
+#define G_READ_TO_ACTIVATE	SCALE_FACTOR
+#define G_READ_TO_READ		TCCD_L*SCALE_FACTOR
+#define G_READ_TO_WRITE		TCCD_L*SCALE_FACTOR
+#define G_WRITE_TO_PRECHARGE	SCALE_FACTOR
+#define G_WRITE_TO_ACTIVATE	SCALE_FACTOR
+#define G_WRITE_TO_READ		(CWL+TBURST+TWTR_L)*SCALE_FACTOR
+#define G_WRITE_TO_WRITE	TCCD_L*SCALE_FACTOR
+
 #include "bank.h"
 #include "../wrappers.h"
 
 typedef struct {
 	bank_t**		bank; //Array of banks
 	unsigned		numBanks; //Number of banks in group
+	uint8_t			priOp; //Priority operation flags of this bank group
+	unsigned long long	priACT; //Time of the scheduled priority activate
+	unsigned long long	priRD; //Time of the scheduled priority read
+	unsigned long long	priWR; //Time of the scheduled priority write
 	unsigned long long 	nextActivate; //Time available for next ACT command (tRRD_L)
 	unsigned long long 	nextWrite; //Time available for next write(tCCD_L)
 	unsigned long long 	nextRead; //Time available for next read(tWTR_L,tCCD_L)
@@ -31,6 +50,16 @@ bGroup_t *group_init(unsigned banks, unsigned rows);
  * @param	bankGroup	Target bankGroup to clean
  */
 void group_deinit(bGroup_t *bankGroup);
+
+/**
+ * @fn		group_recoveryTime
+ * @brief	Returns the amount of time after firstOp until the group is ready for secOp
+ *
+ * @param	firstOp	First memCmd_t to be executed
+ * @param	secOp	Second memCmd_t to be executed
+ * @return	Min time in CPU clock cycles between firstOp and secOp
+ */
+uint8_t group_recoveryTime(memCmd_t firstOp, memCmd_t secOp);
 
 /**
  * @fn		group_canActivate
