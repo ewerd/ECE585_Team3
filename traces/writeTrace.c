@@ -33,7 +33,7 @@ void createTrace(FILE* trace);
 unsigned long long timestep = 1;
 unsigned long long endtime = 1;
 int multipleEntries = 1;
-unsigned long long address = 0x000000000; 
+//unsigned long long address = 0x000000000; 
 long int address_count = 0;
 
 int main(int argc, char** argv)
@@ -82,6 +82,7 @@ void createTrace(FILE* trace)
 unsigned long long getAddr(unsigned long long time) 
 {
 	
+	/*
 	//could automate with flag to create types of test cases
 	if (time %2 == 0)
 	address =  0x000000000;
@@ -89,12 +90,22 @@ unsigned long long getAddr(unsigned long long time)
 	address =  0X000080000;
 	//
 	//address =  0x000000000 + (address_count << 18); //succsessive rows
-
-
+	*/
+	/*
 	address_count++; 
 	if (address_count == 32768)
 		address_count = 0; 
-		
+	*/
+
+	unsigned long long address = 0x000000000000000000; 
+	
+
+	address = rand() & 0xf8; //8 byte aligned
+	address |= (rand() & 0xff) << 8; 
+	address |= (rand() & 0xff) << 16; 
+	address |= (rand() & 0xff) << 24;
+	address &= 0x1fffffff8;
+
 	return address; 
 }
 
@@ -110,11 +121,12 @@ unsigned long long getAddr(unsigned long long time)
 unsigned int getInstruction(unsigned long long time)
 {
 	
-	if (time %2 == 0)
-	return 0;
+	//if (time %2 == 0)
+	//return 0;
 	
-	else
-	return 0; 
+	//else
+	int request = rand() % 3;
+	return request; 
 }
 
 /**
