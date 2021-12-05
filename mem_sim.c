@@ -51,14 +51,17 @@ unsigned long long getTimeJump(void);
 int updateCommands(void);
 void serviceCommands(void);
 void optimizedExecution(void);
+unsigned indexOldestCmd(bool* touched, operation_t cmd);
 unsigned indexHighestThrshld(bool* touched);
+unsigned indexCmdWithOpenRow(bool* touched, operation_t cmd);
 void inOrderExecution(void);
 int sendMemCmd(inputCommandPtr_t command);
 unsigned scanCommands(bool* cmdsRdy);
 void updateAllRequests(bool *touched);
 int updateCmdState(inputCommandPtr_t command);
+bool processRequest(unsigned index, dimmSchedule_t *schedule);
 uint8_t scheduleRequest(uint8_t timeTillCmd, inputCommandPtr_t request, dimmSchedule_t *schedule);
-uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule);
+uint8_t reserveTime(int cmdTime, inputCommandPtr_t command, dimmSchedule_t *schedule);
 
 #ifdef VERBOSE
 void writeOutput(uint8_t delay, const char *format, ...);
@@ -593,19 +596,205 @@ void optimizedExecution()
 		#ifdef DEBUG
 		Printf("mem_sim.optimizedExecution(): High TIQ over threshold at index %u\n", index);
 		#endif
-		inputCommandPtr_t request = peakCommand(index);
-		uint8_t timeTillCmd = getAge(index, commandQueue);
-		timeTillCmd = scheduleRequest(timeTillCmd, request, &schedule);
-		if (timeTillCmd == 0)
-		{
-			setAge(index, sendMemCmd(request), commandQueue);
-			return;
-		}
-		setAge(index, timeTillCmd, commandQueue);
-		touched[index-1] = true;
+		if (processRequest(index, &schedule))
+			return; //If process request returns true, then a DRAM cmd has been sent
+		
+		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
+	
+	#ifdef DEBUG
+	Printf("mem_sim.optimizedExecution(): After TIQ threshold:\n");
+	Printf("\t[\t");
+	for (unsigned i = 0; i < commandQueue->size; i++)
+	{
+		if (touched[i])
+			Printf("t\t");
+		else
+			Printf("f\t");
+	}
+	Printf("]\n");
+	#endif
 
+	for (unsigned index = indexCmdWithOpenRow(touched, IFETCH); index != 0; index = indexCmdWithOpenRow(touched, IFETCH))
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.optimizedExecution(): Fetch to open row at index %u\n", index);
+		#endif
+		if (processRequest(index, &schedule))
+			return; //If process request returns true, then a DRAM cmd has been sent
+		
+		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
+	}
+	
+	#ifdef DEBUG
+	Printf("mem_sim.optimizedExecution(): After Fetch to open row:\n");
+	Printf("\t[\t");
+	for (unsigned i = 0; i < commandQueue->size; i++)
+	{
+		if (touched[i])
+			Printf("t\t");
+		else
+			Printf("f\t");
+	}
+	Printf("]\n");
+	#endif
 
+	for (unsigned index = indexCmdWithOpenRow(touched, RD); index != 0; index = indexCmdWithOpenRow(touched, RD))
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.optimizedExecution(): Read to open row at index %u\n", index);
+		#endif
+		if (processRequest(index, &schedule))
+			return; //If process request returns true, then a DRAM cmd has been sent
+		
+		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
+	}
+	
+	#ifdef DEBUG
+	Printf("mem_sim.optimizedExecution(): After Read to open row:\n");
+	Printf("\t[\t");
+	for (unsigned i = 0; i < commandQueue->size; i++)
+	{
+		if (touched[i])
+			Printf("t\t");
+		else
+			Printf("f\t");
+	}
+	Printf("]\n");
+	#endif
+
+	for (unsigned index = indexCmdWithOpenRow(touched, WR); index != 0; index = indexCmdWithOpenRow(touched, WR))
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.optimizedExecution(): Write to open row at index %u\n", index);
+		#endif
+		if (processRequest(index, &schedule))
+			return; //If process request returns true, then a DRAM cmd has been sent
+		
+		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
+	}
+	
+	#ifdef DEBUG
+	Printf("mem_sim.optimizedExecution(): After Write to open row:\n");
+	Printf("\t[\t");
+	for (unsigned i = 0; i < commandQueue->size; i++)
+	{
+		if (touched[i])
+			Printf("t\t");
+		else
+			Printf("f\t");
+	}
+	Printf("]\n");
+	#endif
+	
+	for (unsigned index = indexOldestCmd(touched, IFETCH); index != 0; index = indexOldestCmd(touched, IFETCH))
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.optimizedExecution(): Fetch at index %u\n", index);
+		#endif
+		if (processRequest(index, &schedule))
+			return; //If process request returns true, then a DRAM cmd has been sent
+		
+		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
+	}
+	
+	#ifdef DEBUG
+	Printf("mem_sim.optimizedExecution(): After other fetches:\n");
+	Printf("\t[\t");
+	for (unsigned i = 0; i < commandQueue->size; i++)
+	{
+		if (touched[i])
+			Printf("t\t");
+		else
+			Printf("f\t");
+	}
+	Printf("]\n");
+	#endif
+	
+	for (unsigned index = indexOldestCmd(touched, RD); index != 0; index = indexOldestCmd(touched, RD))
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.optimizedExecution(): Read at index %u\n", index);
+		#endif
+		if (processRequest(index, &schedule))
+			return; //If process request returns true, then a DRAM cmd has been sent
+		
+		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
+	}
+	
+	#ifdef DEBUG
+	Printf("mem_sim.optimizedExecution(): After other reads:\n");
+	Printf("\t[\t");
+	for (unsigned i = 0; i < commandQueue->size; i++)
+	{
+		if (touched[i])
+			Printf("t\t");
+		else
+			Printf("f\t");
+	}
+	Printf("]\n");
+	#endif
+	
+	for (unsigned index = indexOldestCmd(touched, WR); index != 0; index = indexOldestCmd(touched, WR))
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.optimizedExecution(): Write at index %u\n", index);
+		#endif
+		if (processRequest(index, &schedule))
+			return; //If process request returns true, then a DRAM cmd has been sent
+		
+		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
+	}
+	
+	#ifdef DEBUG
+	Printf("mem_sim.optimizedExecution(): After other writes:\n");
+	Printf("\t[\t");
+	for (unsigned i = 0; i < commandQueue->size; i++)
+	{
+		if (touched[i])
+			Printf("t\t");
+		else
+			Printf("f\t");
+	}
+	Printf("]\n");
+	#endif
+
+	//Making sure no commands were missed
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		if (!touched[i-1])
+			Fprintf(stderr, "Warning in mem_sim.optimizedExecution(): Reached end of priority list without touching index %u\n", i);
+	}
+}
+
+unsigned indexOldestCmd(bool* touched, operation_t cmd)
+{
+	inputCommandPtr_t current;
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		if (touched[i-1])
+			continue;
+
+		current = peakCommand(i);
+		if (current->operation == cmd)
+			return i;
+	}
+	return 0;
+}
+
+unsigned indexCmdWithOpenRow(bool* touched, operation_t cmd)
+{
+	inputCommandPtr_t current;
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		if (touched[i-1])
+			continue;
+
+		current = peakCommand(i);
+		if (current->operation == cmd && dimm_rowOpen(dimm, current->bankGroups, current->banks, current->rows))
+			return i;
+	}
+	return 0;
 }
 
 /**
@@ -716,6 +905,23 @@ void inOrderExecution()
 			return;
 		}
 	}
+}
+
+bool processRequest(unsigned index, dimmSchedule_t *schedule)
+{
+	inputCommandPtr_t request = peakCommand(index);
+	uint8_t timeTillCmd = getAge(index, commandQueue);
+	#ifdef DEBUG
+	Printf("mem_sim.processRequest():At index %u: Age:%u nextCmd:%s Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u\n", index, timeTillCmd, nextCmdToString(request->nextCmd), request->cpuCycle, getCommandString(request->operation), request->bankGroups, request->banks, request->rows, request->upperColumns);
+	#endif
+	timeTillCmd = scheduleRequest(timeTillCmd, request, schedule);
+	if (timeTillCmd == 0)
+	{
+		setAge(index, sendMemCmd(request), commandQueue);
+		return true;
+	}
+	setAge(index, timeTillCmd, commandQueue);
+	return false;
 }
 
 uint8_t scheduleRequest(uint8_t timeTillCmd, inputCommandPtr_t request, dimmSchedule_t *schedule)
