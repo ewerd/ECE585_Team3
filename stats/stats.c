@@ -88,13 +88,14 @@ void displayStats(FILE* output)
 				}
 				fchTillMed--;
 			}
+			break;
 
 			case RD:
 			if (request->timeInQueue < rdMin)
 				rdMin = request->timeInQueue;
 			if (request->timeInQueue > rdMax)
 				rdMax = request->timeInQueue;
-			rdAvg += ((float)request->timeInQueue)/((float)fchRequests);
+			rdAvg += ((float)request->timeInQueue)/((float)rdRequests);
 			if (rdMed1 == 0)
 			{
 				if (rdOdd && rdTillMed == 0)
@@ -111,6 +112,7 @@ void displayStats(FILE* output)
 				}
 				rdTillMed--;
 			}
+			break;
 
 			case WR:
 			if (request->timeInQueue < wrMin)
@@ -134,7 +136,7 @@ void displayStats(FILE* output)
 				}
 				wrTillMed--;
 			}
-
+			break;
 		}
 		if (request->timeInQueue < totMin)
 			totMin = request->timeInQueue;
