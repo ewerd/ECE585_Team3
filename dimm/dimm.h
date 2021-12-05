@@ -20,6 +20,7 @@
 #define DIMM_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "group.h"
 #include "bank.h"
 #include "../wrappers.h"
