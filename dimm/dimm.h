@@ -220,4 +220,16 @@ int dimm_canWrite(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, uns
  */
 int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsigned long long currentTime);
 
+/**
+ * @fn		dimm_rowOpen
+ * @brief	Checks to for active row
+ *
+ * @detail	Checks that a bank and a bank row are activated (ACTIVE status)
+ * @param	dimm	Pointer to the dimm struct
+ * @param	group	Bank group
+ * @param	bank	Target bank
+ * @param	row	    Target row
+ * @return	bool    True if the bank and desired row are activated, false otherwise
+ */
+bool dimm_rowOpen(dimm_t *dimm, unsigned group, unsigned bank, unsigned row);
 #endif
