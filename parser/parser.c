@@ -1,23 +1,26 @@
-/*
-MemoryController.c
-*/
+/**
+ * @file  parser.c
+ * @brief File input parser source code for DRAM memory controller simulation
+ *
+ * @detail 	This parser is used to parse through memory trace input files for the
+ * 		memory controller simulation. It accepts input in the form
+ *		<time> <command> <address in hex> and then maps this address to
+ *		the address's row, column, bank, bank group, and byte select fields.
+ *		The parser gathers input one line at a time and holds it until the
+ *		cpu time has passed and there is room in the queue for it. It also
+ * 		informs the simulator when it reaches the end of the file.
+ *		ECE 485/585 Final Project, Dr. Mark Faust
+ *		Portland State University, Fall 2021
+ *
+ * @date	Presented December 6th, 2021
+ *
+ * @author	Stephen Short 	(steshort@pdx.edu)
+ * @author	Drew Seidel	(dseidel@pdx.edu)
+ * @author	Michael Weston 	(miweston@pdx.edu)
+ * @author	Braden Harwood 	(bharwood@pdx.edu)
+ *
+ */
 
-//Main
-/*
-Request Input Option (P)
-Request Filename
-Open File
-Set cycle time to 0
-Check if line is empty
- - If current line is empty/there is no line
-	read in line
- - Check if current time is the same as the line time
-	- If line is less than current time, check if the queue is empty
-	- If empty, advance time to the line time
- - Look at queue operation to see if the next operation is possible
-		- If next operation is possible, take it
-		- else, continue time
-*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
