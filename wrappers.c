@@ -22,7 +22,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <stdbool.h>
+#include <string.h>
 
 void Printf(char* format, ...)
 {
@@ -83,4 +84,16 @@ void Fclose(FILE *stream)
 		perror("Error calling fclose()");
 		exit(EXIT_FAILURE);
 	}
+}
+
+bool isNumber(const char* test)
+{
+	if (!test)
+		return false;
+	//Check if every character in test is a digit
+	if (strspn(test, "0123456789") == strlen(test))
+	{
+		return true;
+	}
+	return false;
 }

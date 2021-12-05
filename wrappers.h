@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 /**
  * @fn		Printf
@@ -68,5 +69,15 @@ FILE *Fopen(const char *pathname, const char *mode);
  * @param	stream  FILE pointer to be closed
  */
 void Fclose(FILE *stream);
+
+/**
+ * @fn		isNumber
+ * @brief	Checks if a given string contains only numeric digits
+ *
+ * @param	test	String being examined
+ *
+ * @return	true if the string only contains numeric digits, false otherwise
+ */
+bool isNumber(const char* test);
 
 #endif

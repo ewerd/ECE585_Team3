@@ -547,6 +547,60 @@ char *parseArgs(int argc, char **argv)
 		{
 			statFlag = true;
 		}
+		else if (!strcmp(argv[i], "-fch")) 
+		{
+			if (i+1 == argc)
+				Fprintf(stderr, "No parameter after -fch flag\n");
+			else if (!isNumber(argv[i+1]))
+				Fprintf(stderr, "Invalid argument %s after -fch. Expected number\n", argv[i+1]);
+			else
+			{
+				i++;
+				int convert = atoi(argv[i]);
+				if (convert < 1 || convert > UINT16_MAX)
+				{
+					Fprintf(stderr, "Invalid argument for -fch. Must be between 1 and %u\n", UINT16_MAX);
+				}
+				else
+					fchThrshld = (uint16_t)convert;	
+			}
+		}
+		else if (!strcmp(argv[i], "-rd")) 
+		{
+			if (i+1 == argc)
+				Fprintf(stderr, "No parameter after -rd flag\n");
+			else if (!isNumber(argv[i+1]))
+				Fprintf(stderr, "Invalid argument %s after -rd. Expected number\n", argv[i+1]);
+			else
+			{
+				i++;
+				int convert = atoi(argv[i]);
+				if (convert < 1 || convert > UINT16_MAX)
+				{
+					Fprintf(stderr, "Invalid argument for -rd. Must be between 1 and %u\n", UINT16_MAX);
+				}
+				else
+					rdThrshld = (uint16_t)convert;	
+			}
+		}
+		else if (!strcmp(argv[i], "-wr")) 
+		{
+			if (i+1 == argc)
+				Fprintf(stderr, "No parameter after -wr flag\n");
+			else if (!isNumber(argv[i+1]))
+				Fprintf(stderr, "Invalid argument %s after -wr. Expected number\n", argv[i+1]);
+			else
+			{
+				i++;
+				int convert = atoi(argv[i]);
+				if (convert < 1 || convert > UINT16_MAX)
+				{
+					Fprintf(stderr, "Invalid argument for -wr. Must be between 1 and %u\n", UINT16_MAX);
+				}
+				else
+					wrThrshld = (uint16_t)convert;	
+			}
+		}
 		else
 		{
 			Printf("Invalid argument: %s\n", argv[i]);
