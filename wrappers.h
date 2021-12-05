@@ -17,6 +17,9 @@
  * @author  Braden Harwood  (bharwood@pdx.edu)
  */
 
+#ifndef WRAPPERS_H_
+#define WRAPPERS_H_
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -65,4 +68,5 @@ FILE *Fopen(const char *pathname, const char *mode);
  * @param	stream  FILE pointer to be closed
  */
 void Fclose(FILE *stream);
+
 #endif
