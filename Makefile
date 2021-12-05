@@ -6,8 +6,8 @@ CC = gcc
 CFLAGS = -Wall -std=c99 -g
 OBJS = parser.o mem_queue.o mem_sim.o
 LDFLAGS = -Wall -lm
-SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c wrappers.c dimm/dimm.c dimm/group.c dimm/bank.c
-HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h dimm/dimm.h dimm/group.h dimm/bank.h
+SRC = parser/parser.c queueADT/mem_queue.c mem_sim.c wrappers.c dimm/dimm.c dimm/group.c dimm/bank.c stats/stats.c stats/sListADT.c
+HDRS = parser/parser.h queueADT/mem_queue.h wrappers.h dimm/dimm.h dimm/group.h dimm/bank.h stats/stats.h stats/sListADT.h
 EXE  = sim.exe
 
 #.PHONY to inform Make to not associate all with a file named all

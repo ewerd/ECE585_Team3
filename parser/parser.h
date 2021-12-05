@@ -12,7 +12,10 @@ MemoryController.h
 #include <stdbool.h>
 
 // Define Operation Enum
+#ifndef OPERATION_T_
+#define OPERATION_T_
 typedef enum _operation_e { RD, WR, IFETCH } operation_t;
+#endif
 
 #ifndef MEMCMD_T_
 #define MEMCMD_T_
