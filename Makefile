@@ -39,6 +39,12 @@ debug : $(OBJS)
 test: sim
 	./testing/test_output.sh
 
+#.PHONY to inform Make to not associate test with a file named statistics
+.PHONY: statistics
+
+statistics: sim
+	 ./stat_comparison/test_stat.sh
+
 #.PHONY to inform Make to not associate help with a file named help
 # add info about flags of the actual simulation program, -o -stat, etc
 .PHONY: help
