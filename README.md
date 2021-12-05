@@ -142,12 +142,15 @@ WORK IN PROGRESS
 MSB: Rows > Banks > Columns[10:3] > Bank Groups >  Columns[2:0] > Byte Select
 -Consider Row/Bank/UpperColumns order with open page policy idea
 
-## Improved Organization
+### Improved Organization
 MSB: Rows[14:0] > Columns[10:3] > Banks[1:0] > Bank Groups[1:0] > Columns[2:0] > Byte Select[2:0]
-### Reasoning:
+### Reasoning
 The reasons for this choice are: 
 - Spatial locality - sequential code and data is likely to be fetched and accessed. 
 - Bank parallelism allows access to open pages while performing a precharge or activation on another. It is most efficient to spread these commands across bank groups, rather than banks within the same bank group when possible. 
 
+### Runtime Instructions
+Download this Github repository and unzip it in an empty directory of your choice on your system. 
 
+Accsess the directory in your terminal or compiler of your choice. Run 'make help' to view all options.
 
