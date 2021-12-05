@@ -1,6 +1,22 @@
 /**
  * @file	wrappers.c
  * @brief	Simple wrapper functions to catch errors from system calls
+ * @detail  This source code encompasses all the system calls used in the memory simulator.
+ *          The system calls are "wrapped" by these functions so that error checking
+ *          can be implemented. This helps to standardize the method of exiting the program
+ *          due to an error by allowing the exit code to be assigned for these system calls.          
+ *          
+ *          ECE 485/585 Final Project, Dr. Mark Faust
+ *          Portland State University, Fall 2021
+ *
+ * @date Presented December 6th, 2021
+ *
+ * @author  Stephen Short   (steshort@pdx.edu)
+ * @author  Drew Seidel (dseidel@pdx.edu)
+ * @author  Michael Weston  (miweston@pdx.edu)
+ * @author  Braden Harwood  (bharwood@pdx.edu)
+ *
+ *
  */
 
 #include <stdarg.h>

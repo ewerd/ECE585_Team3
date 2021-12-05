@@ -1,10 +1,21 @@
 /**
  * @file	wrappers.h
- * @brief	Helper wrapper functions to catch errors from system calls
+ * @brief	Helper wrapper functions to catch errors from system calli
+ * @desc    Wrapper header file which encompasses the standard system calls: printf,
+ *          fprintf, malloc, fopen, and fclose into wrapper functions (first letter capitalized
+ *          to differentiate) in order to standardize the exit codes from all errors in the 
+ *          memory controller simulator.
+ *
+ *          ECE 485/585 Final Project, Dr. Mark Faust
+ *          Portland State University, Fall 2021
+ *
+ * @date Presented December 6th, 2021
+ *
+ * @author  Stephen Short   (steshort@pdx.edu)
+ * @author  Drew Seidel     (dseidel@pdx.edu)
+ * @author  Michael Weston  (miweston@pdx.edu)
+ * @author  Braden Harwood  (bharwood@pdx.edu)
  */
-
-#ifndef WRAPPERS_H_
-#define	WRAPPERS_H_
 
 #include <stdlib.h>
 #include <stdio.h>
