@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Generate ground truth outputs for new tests
+# This script generates new output files to use for the testing setup.
+# This is useful after confirming that changes made to the parser (found through test_output.sh)
+# are accurate. This will then create ground truth outputs to test against
+# ECE 485/585 Final Project, Dr. Mark Faust
+# Portland State University, Fall 2021
+# Presented December 6th, 2021
+# Author Braden Harwood (bharwood@pdx.edu)
+
 # Make the program
 (cd .. && make clean) # Spawn another terminal to cd up a directory and run make clean
 (cd .. && make all)   # Spawn another terminal to cd up a directory and run make all

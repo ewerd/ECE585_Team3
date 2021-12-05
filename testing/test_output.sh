@@ -3,6 +3,7 @@
 # Testing Script for DRAM Memory Simulation Program
 # Portland State University, ECE 485/585 Final Project
 # Presented December 6th, 2021
+# Author Braden Harwood
 
 # Runs all tests and compares each test's output to previously checked output files
 
