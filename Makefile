@@ -39,6 +39,18 @@ debug : $(OBJS)
 test: sim
 	./testing/test_output.sh
 
+#.PHONY to inform Make to not associate help with a file named help
+# add info about flags of the actual simulation program, -o -stat, etc
+.PHONY: help
+help:
+	@echo "Targets available:"
+	@echo "all     : Compiles the project. Run with ./sim.exe -o outputfilename inputFilename"
+	@echo "verbose : Compiles the project the same as all, but with extra print statements during run time"
+	@echo "debug   : Compiles the project the same as verbose, but with even more print statements during run time."
+	@echo "test    : Compiles the project and then runs a test script that runs all of our test stimulus."
+	@echo "          It then reports back what differences there are in the output versus the manually checked ground truth."
+	@echo "clean   : Deletes all of the object files and executable file to clean the directory"
+
 #.PHONY to inform Make to not associate clean with a file named clean
 .PHONY: clean
 clean:
