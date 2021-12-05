@@ -43,9 +43,13 @@ echo "Test Write tRTP"
 diff -u testing/ground_truth/writeTwoLongWaitOneRTP_output.txt <(./sim.exe testing/test_traces/writeTwoLongWaitOneRTP_test.txt) 	
 
 echo "Test Read to Write, all Same Row"
-diff -u testing/ground_truth/readWriteSameRow_output.txt <(./sim.exe testing/test_traces/readWriteSameRow_test.txt) 		
+diff -u testing/ground_truth/readWriteSameRow_output.txt <(./sim.exe testing/test_traces/readWriteSameRow_test.txt) 	
+echo "Test Read to Write, different bank group"
+diff -u testing/ground_truth/readWriteDiffBGB_output.txt <(./sim.exe testing/test_traces/readWriteDiffBGB_test.txt)
 echo "Test Read to Write to Read, all Same Row"
 diff -u testing/ground_truth/readWriteReadSameRow_output.txt <(./sim.exe testing/test_traces/readWriteReadSameRow_test.txt) 	
+echo "Test Read to Write same row to Read different bank group"
+diff -u testing/ground_truth/readWriteReadDiffBGB_output.txt <(./sim.exe testing/test_traces/readWriteReadDiffBGB_test.txt) 	
 
 echo "Test Write to Read, all Same Row"
 diff -u testing/ground_truth/writeReadSameRow_output.txt <(./sim.exe testing/test_traces/writeReadSameRow_test.txt) 		
