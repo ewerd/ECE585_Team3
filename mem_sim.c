@@ -14,6 +14,7 @@
 #include "./dimm/dimm.h"
 #include <limits.h>
 #include "wrappers.h"
+#include "./stats/stats.h"
 
 // Parameters
 #define CMD_QUEUE_SIZE 16
@@ -73,6 +74,7 @@ parser_t *parser;
 dimm_t *dimm;
 FILE *output_file;
 bool optimizedExecution;
+bool statFlag;
 
 int main(int argc, char **argv)
 {
@@ -146,6 +148,9 @@ int main(int argc, char **argv)
 		printOutput();
 	}
 	#endif
+	
+	if (statFlag)
+		displayStats(output_file);
 
 	// garbage collection to close fd's and clean the heap
 	garbageCollection();
@@ -162,6 +167,7 @@ void garbageCollection()
 	clean_queue(commandQueue);
 	clean_queue(outputBuffer);
 	cleanParser(parser);
+	clean_Stats();
 	dimm_deinit(dimm);
 	Fclose(output_file);
 }
@@ -214,6 +220,8 @@ void initSim(int argc, char **argv)
 		Fprintf(stderr, "Error in mem_sim.initSim(): Could not initialize dimm.\n");
 		goto DEINIT_OUTPUTBUFF;
 	}
+
+	init_Stats();
 
 	return;
 
@@ -441,6 +449,7 @@ char *parseArgs(int argc, char **argv)
 	char *outFile = NULL;
 	bool out_flag = false; 
 	optimizedExecution = false;
+	statFlag = false;
 
 	for (int i = 1; i < argc; i++) // For each string in argv
 	{
@@ -503,7 +512,14 @@ char *parseArgs(int argc, char **argv)
 		{
 			optimizedExecution = true;
 		}
-		
+		else if(!strcmp(argv[i], "-stat"))
+		{
+			statFlag = true;
+		}
+		else
+		{
+			Printf("Invalid argument: %s\n", argv[i]);
+		}
 	}
 	// Check bounds on parameters and assert defaults and/or print error messages
 	if (fileName == NULL)
@@ -560,7 +576,19 @@ void inOrderExecution()
 				#ifdef VERBOSE
 				writeOutput(0, "%llu: Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 				#endif
-				free(queueRemove(commandQueue,i));
+				if (statFlag)
+				{
+					request_t *info = Malloc(sizeof(request_t));
+					info->timeInQueue = getTimeInQueue(i, commandQueue);
+					inputCommandPtr_t oldCmd = queueRemove(commandQueue, i);
+					info->type = oldCmd->operation;
+					addRequest(info);
+					free(oldCmd);
+				}
+				else
+				{
+					free(queueRemove(commandQueue,i));
+				}
 				i--;
 			}
 			continue;				
