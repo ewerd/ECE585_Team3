@@ -2,10 +2,18 @@
  * @file	dimm.h
  * @brief	Abstraction of a DIMM
  *
- * @detail	TODO DIMM contains 4 bank groups of 4 banks each and 256 rows per bank.
+ * @detail	DIMM contains 4 bank groups of 4 banks each and 256 rows per bank. 
+ *		This module recursively checks timing constraints on the bank group
+ *		which then checks on the bank level to determin the timing constraints
+ *		for each memory command.
+ *		ECE 485/585 Final Project, Dr. Mark Faust
+ *		Portland State University, Fall 2021
  *
- * @date	TODO
- * @authors	TODO
+ * @date	Presented December 6th, 2021
+ * @author	Stephen Short	(steshort@pdx.edu)
+ * @author	Drew Seidel	(dseidel@pdx.edu)
+ * @author	Michael Weston	(miweston@pdx.edu)
+ * @author	Braden Harwood 	(bharwood@pdx.edu)
  */
 
 #ifndef DIMM_H_

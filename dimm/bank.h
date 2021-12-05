@@ -1,3 +1,19 @@
+/**
+ * @file bank.h 
+ * @brief Bank Level Memory Controller ADT header file
+ *
+ * @detail	This header file contains all of the constants, enums, structs, and function prototypes
+ * 		used for the Bank level memory controller simulator.
+ * 		ECE 485/585 Final Project, Dr. Mark Faust
+ * 		Portland State University, Fall 2021
+ *
+ * @date 	Presented December 6th, 2021
+ *
+ * @author	Stephen Short	(steshort@pdx.edu)
+ * @author	Drew Seidel	(dseidel@pdx.edu)
+ * @author	Michael Weston	(miweston@pdx.edu)
+ *
+ */
 
 
 #ifndef BANK_H_

@@ -1,5 +1,21 @@
-
-
+/**
+ * @file bank.c 
+ * @brief Bank Level Memory Controller ADT source code file
+ *
+ * @detail 	This is the source code file which contains the bank module level functionality.
+ * 		It is the lowest level of the memory control simulation and is queried recursively
+ * 		to determine the timing constraints for various memory commands.
+ *		ECE 485/585 Final Project, Dr. Mark Faust
+ *		Portland State University, Fall 2021
+ *
+ * @date	Presented December 6th, 2021
+ *
+ * @author 	Stephen Short 	(steshort@pdx.edu)
+ * @author	Drew Seidel	(dseidel@pdx.edu)
+ * @author	Michael Weston	(miweston@pdx.edu)
+ * @author	Braden Harwood	(bharwood@pdx.edu)
+ *
+ */
 #include "bank.h"
 #include "../wrappers.h"
 #include "dimm.h"
