@@ -145,4 +145,9 @@ MSB: Rows > Banks > Columns[10:3] > Bank Groups >  Columns[2:0] > Byte Select
 ## Improved Organization
 MSB: Rows[14:0] > Columns[10:3] > Banks[1:0] > Bank Groups[1:0] > Columns[2:0] > Byte Select[2:0]
 ### Reasoning:
+The reasons for this choice are: 
+-Spatial locality - sequential code and data is likely to be fetched and accessed. 
+-Bank parallelism allows access to open pages while performing a precharge or activation on another. It is most efficient to spread these commands across bank groups, rather than banks within the same bank group when possible. 
+
+
 
