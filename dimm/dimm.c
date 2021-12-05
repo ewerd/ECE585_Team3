@@ -285,6 +285,20 @@ int dimm_write(dimm_t *dimm, unsigned group, unsigned bank, unsigned row, unsign
 	return writeTime; // returns time until data written to dimm / desired bank row
 }
 
+bool dimm_rowOpen(dimm_t *dimm, unsigned group, unsigned bank, unsigned row)
+{
+    if (dimm_checkArgs(dimm, group < 0))
+	{
+		Fprintf(stderr, "Error in dimm.dimm_canWrite(): Bad arguments.\n");
+		return -2;	
+	}
+
+    if (dimm->group[group]->bank[bank]->state == ACTIVE && dimm->group[group]->bank[bank]->row == row)
+        return true;
+    else
+        return false;
+}
+
 
 // ------------------------------------------------------Helper Functions-------------------------------------------------------------
 
