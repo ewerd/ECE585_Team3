@@ -75,6 +75,7 @@ unsigned indexOldestCmd(bool* touched, operation_t cmd);
 unsigned indexHighestThrshld(bool* touched);
 unsigned indexCmdWithOpenRow(bool* touched, operation_t cmd);
 void inOrderExecution(void);
+void strictInOrdExecution(void);
 int sendMemCmd(inputCommandPtr_t command);
 void updateAllRequests(bool *touched);
 int updateCmdState(inputCommandPtr_t command);
@@ -102,6 +103,7 @@ dimm_t *dimm; //The DIMM struct that the controller is sending DRAM cmds to
 FILE *output_file; //Output stream if specified by the user. Defaults to stdout
 bool optimizedFlag; //Enables the optimized scheduling algorithm
 bool statFlag; //Enables printing statistics at the completion of the simulation
+bool strictFlag; //Enables the strict in-order scheduling
 
 // Time in queue thresholds for each operation. Used with the -opt flag 
 // scheduling.
@@ -478,25 +480,13 @@ char *parseArgs(int argc, char **argv)
 {
 	char *fileName = NULL;
 	char *outFile = NULL;
-	bool out_flag = false; 
-	optimizedFlag = false;
+	bool out_flag = false;
+	bool strictFlag = false;
+	bool optimizedFlag = false;
 	statFlag = false;
 
 	for (int i = 1; i < argc; i++) // For each string in argv
 	{
-		// Once we add flags they can go here like this example
-		/*
-		if (!strcmp(argv[i], "-step")) //If the -step flag is asserted
-		{
-			if (isNumber(argv[i+1])) //Verify the user specified a number after flag
-			{
-				i++; //Step over next argument since we're using it for this
-				timestep = strtoull(argv[i], 0, 0);
-			}
-			else
-				expectedNumber("step", argv[i+1]); //If no number follows, alert user. Default to 1.
-		}
-		*/
 		if (argv[i][0] != '-')
 		{
 			if (fileName == NULL)
@@ -546,6 +536,10 @@ char *parseArgs(int argc, char **argv)
 		else if(!strcmp(argv[i], "-stat"))
 		{
 			statFlag = true;
+		}
+		else if (!strcmp(argv[i], "-strict"))
+		{
+			strictFlag = true;
 		}
 		else if (!strcmp(argv[i], "-fch")) 
 		{
@@ -620,6 +614,12 @@ char *parseArgs(int argc, char **argv)
 		#endif
 	}
 
+	if (strictFlag && optimizedFlag)
+	{
+		Fprintf(stderr, "Error in mem_sim.parseArgs(): Cannot enable -strict and -opt\n");
+		exit(EXIT_FAILURE);
+	}
+
 	return fileName;
 }
 
@@ -635,6 +635,8 @@ void serviceCommands()
 {
 	if (optimizedFlag)
 		optimizedExecution();
+	else if (strictFlag)
+		strictInOrdExecution();
 	else
 		inOrderExecution();
 }
@@ -900,6 +902,67 @@ void inOrderExecution()
 			if (processRequest(i, &schedule)) // If true is returned, then DIMM cmd was sent
 				return;
 	}
+}
+
+/**
+ * @fn		inOrderExecution
+ * @brief	Sends command to DIMM with a schedule for loose in-order execution
+ *
+ * @detail	This algorithm will prioritize the oldest requests first. The order in which data
+ *		is sent onto or latched from the bus will be exactly the order that the requests
+ *		arrived at the memory controller.
+ */
+void strictInOrdExecution()
+{
+	//Setup the scheduler
+	dimmSchedule_t schedule;
+	schedule.dimm_op = NONE;
+	for (int i = 0; i < BANK_GROUPS; i++)
+		schedule.grp_op[i] = NONE;
+	for (int i = 0; i < BANK_GROUPS*BANKS_PER_GROUP; i++)
+		schedule.bank_op[i] = NONE;
+	
+	//Update all requests in the queue
+	bool touched[commandQueue->size];
+	updateAllRequests(touched);
+	
+	bool firstAccess = true; //Tracks if there's a higher priority rd/wr than the request being examined
+	unsigned indexOfFirstAccess = 0;
+
+	//Start at the top of the queue and go down, giving priority to the oldest requests
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		if (!touched[i-1]) //Skip requests that are just waiting for data
+			continue;
+		
+		inputCommandPtr_t current = peakCommand(i);
+		if ((current->nextCmd == READ || current->nextCmd == WRITE) && firstAccess)
+		{
+			//If this is the first RD/WR operation, lower the flag and save the index
+			firstAccess = false;
+			indexOfFirstAccess = i;
+			//Send the cmd if able, otherwise schedule it
+			if (processRequest(i, &schedule))
+				return;
+			else
+				continue;
+		}
+		else
+		{
+			//If another RD/WR has already been scheduled
+			uint8_t timeTillFirstAccess = getAge(indexOfFirstAccess, commandQueue);
+			uint8_t timeTillCmd = getAge(i, commandQueue);
+			//If this request would be ready first, schedule it for after priority rd/wr. Otherwise use expected cmd time
+			uint8_t schedTime = (timeTillFirstAccess + SCALE_FACTOR > timeTillCmd) ? timeTillFirstAccess + SCALE_FACTOR : timeTillCmd;
+			setAge(i, scheduleRequest(schedTime, current, &schedule), commandQueue); //Schedule request
+			continue;
+		}
+
+		//Activates and precharges can be sent as long as they don't slow higher priority rd/wr
+		if (processRequest(i, &schedule)) // If true is returned, then DIMM cmd was sent
+			return;
+	}
+
 }
 
 /**
