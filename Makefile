@@ -33,7 +33,9 @@ verbose : $(OBJS)
 debug : $(OBJS)
 	$(CC) $(CFLAGS) -DDEBUG -DVERBOSE -o $(EXE) $(SRC)
 
+#.PHONY to inform Make to not associate test with a file named test
 .PHONY: test
+# test runs a script that runs through all of the outputs and checks if the test case results have changed
 test: sim
 	./testing/test_output.sh
 
