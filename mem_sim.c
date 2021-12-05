@@ -22,7 +22,9 @@
 #define BANKS_PER_GROUP 4
 #define ROWS_PER_BANK 32768
 
-#define MAX_TIME_IN_QUEUE	500
+#define FCH_THRSHLD_TIME_IN_QUEUE	500
+#define RD_THRSHLD_TIME_IN_QUEUE	1000
+#define WR_THRSHLD_TIME_IN_QUEUE	2000
 
 typedef struct{
 	uint8_t			dimm_time;
@@ -48,11 +50,14 @@ unsigned long long advanceTime(void);
 unsigned long long getTimeJump(void);
 int updateCommands(void);
 void serviceCommands(void);
+void optimizedExecution(void);
+unsigned indexHighestThrshld(bool* touched);
 void inOrderExecution(void);
-bool prioritizeCommand(bool *cmdsRdy);
 int sendMemCmd(inputCommandPtr_t command);
 unsigned scanCommands(bool* cmdsRdy);
+void updateAllRequests(bool *touched);
 int updateCmdState(inputCommandPtr_t command);
+uint8_t scheduleRequest(uint8_t timeTillCmd, inputCommandPtr_t request, dimmSchedule_t *schedule);
 uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule);
 
 #ifdef VERBOSE
@@ -73,7 +78,7 @@ queuePtr_t outputBuffer;
 parser_t *parser;
 dimm_t *dimm;
 FILE *output_file;
-bool optimizedExecution;
+bool optimizedFlag;
 bool statFlag;
 
 int main(int argc, char **argv)
@@ -448,7 +453,7 @@ char *parseArgs(int argc, char **argv)
 	char *fileName = NULL;
 	char *outFile = NULL;
 	bool out_flag = false; 
-	optimizedExecution = false;
+	optimizedFlag = false;
 	statFlag = false;
 
 	for (int i = 1; i < argc; i++) // For each string in argv
@@ -510,7 +515,7 @@ char *parseArgs(int argc, char **argv)
 		}
 		else if(!strcmp(argv[i], "-opt"))
 		{
-			optimizedExecution = true;
+			optimizedFlag = true;
 		}
 		else if(!strcmp(argv[i], "-stat"))
 		{
@@ -548,7 +553,110 @@ char *parseArgs(int argc, char **argv)
  */
 void serviceCommands()
 {
-	inOrderExecution();
+	if (optimizedFlag)
+		optimizedExecution();
+	else
+		inOrderExecution();
+}
+
+/**
+ * @fn		optimizedExecution
+ * @brief	Chose request, if any to advance with a DRAM command.
+ *
+ * @detail	Prioritize requests by:
+ *		1. Request that's exceeded it's time in queue threshold by the largest value
+ *		2. Fetches to open rows
+ *		3. Reads to open rows
+ *		4. Writes to open rows
+ *		5. Oldest Fetch in the queue
+ *		6. Oldest read in the queue
+ *		7. Oldest write in the queue
+ *
+ *		Lower priority requests can have DRAM commands issued for them if the DRAM
+ *		command will not impede any higher priority memory request.
+ */
+void optimizedExecution()
+{
+	//Setup a blank schedule
+	dimmSchedule_t schedule;
+	schedule.dimm_op = NONE;
+	for (int i = 0; i < BANK_GROUPS; i++)
+		schedule.grp_op[i] = NONE;
+	for (int i = 0; i < BANK_GROUPS*BANKS_PER_GROUP; i++)
+		schedule.bank_op[i] = NONE;
+
+	bool touched[commandQueue->size]; //Used to track which requests have already been examined
+	updateAllRequests(touched);
+
+	for (unsigned index = indexHighestThrshld(touched); index != 0; index = indexHighestThrshld(touched))
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.optimizedExecution(): High TIQ over threshold at index %u\n", index);
+		#endif
+		inputCommandPtr_t request = peakCommand(index);
+		uint8_t timeTillCmd = getAge(index, commandQueue);
+		timeTillCmd = scheduleRequest(timeTillCmd, request, &schedule);
+		if (timeTillCmd == 0)
+		{
+			setAge(index, sendMemCmd(request), commandQueue);
+			return;
+		}
+		setAge(index, timeTillCmd, commandQueue);
+		touched[index-1] = true;
+	}
+
+
+}
+
+/**
+ * @fn		indexHighestThrshld
+ * @brief	Returns index in command queue of request that is farthest past its threshold
+ *
+ * @detail	The provided array of bools will determine which requests in the queue are considered.
+ *		Values of true in the bool array will cause the same index in the request queue to be
+ *		ignored when examining the requests to determine the one that is farthest past its
+ *		time in queue threshold.
+ * @param	touched Pointer to array of bools that mark which commands have already been touched.
+ * @return	Index of request that's farthest past its time in queue threshold. 0 if no requests
+ *		are past their threshold
+ */
+unsigned indexHighestThrshld(bool* touched)
+{
+	unsigned index = 0; //Track index farthest past threshold
+	uint16_t maxExcess = 0; //Track largest excess past threshold
+
+	inputCommandPtr_t current;
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		//Ignore requests that have already been touched
+		if (touched[i-1])
+			continue;
+		
+		current = peakCommand(i);
+		uint16_t tiq = getTimeInQueue(i, commandQueue);	//Time in queue
+		uint16_t threshold;
+		switch(current->operation)
+		{
+			case IFETCH:
+			threshold = FCH_THRSHLD_TIME_IN_QUEUE;
+			break;
+			case RD:
+			threshold = RD_THRSHLD_TIME_IN_QUEUE;
+			break;
+			case WR:
+			threshold = WR_THRSHLD_TIME_IN_QUEUE;
+			break;
+		}
+		if (tiq < threshold)
+			continue;
+
+		if (tiq - threshold > maxExcess)
+		{
+			maxExcess = tiq - threshold;
+			index = i;
+		}
+	}
+	return index;
 }
 
 /**
@@ -568,7 +676,7 @@ void inOrderExecution()
 
 	for (unsigned i = 1; i <= commandQueue->size; i++)
 	{
-		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
+		inputCommandPtr_t command = peakCommand(i);
 		if (command->nextCmd == REMOVE)
 		{
 			if (getAge(i, commandQueue) == 0)
@@ -597,44 +705,48 @@ void inOrderExecution()
 		#ifdef DEBUG
 		Printf("mem_sim.inOrderExecution():At index %u: Age:%u nextCmd:%s Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u\n", i, timeTillCmd, nextCmdToString(command->nextCmd), command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
 		#endif
-		if (timeTillCmd > 0)
-		{
-			setAge(i, reserveTime(timeTillCmd, command, &schedule), commandQueue);
-			continue;
-		}
 		
-		if (dimm_recoveryTime(command->nextCmd, schedule.dimm_op) > schedule.dimm_time)
+		timeTillCmd = scheduleRequest(timeTillCmd, command, &schedule);
+		
+		if (timeTillCmd > 0)
+			setAge(i, timeTillCmd, commandQueue);
+		else
 		{
-			#ifdef DEBUG
-			Printf("mem_sim.inOrderExecution():Blocked in dimm\n");
-			#endif
-			uint8_t newAge = reserveTime(newAge, command, &schedule); 
-			setAge(i, newAge, commandQueue);
-			continue;
+			setAge(i, sendMemCmd(command), commandQueue);
+			return;
 		}
-		if (group_recoveryTime(command->nextCmd, schedule.grp_op[command->bankGroups]) > schedule.grp_time[command->bankGroups])
-		{
-			#ifdef DEBUG
-			Printf("mem_sim.inOrderExecution():Blocked in bank group.\n");
-			#endif
-			uint8_t newAge = schedule.grp_time[command->bankGroups] + group_recoveryTime(schedule.grp_op[command->bankGroups], command->nextCmd);
-			setAge(i, newAge, commandQueue);
-			reserveTime(newAge, command, &schedule);
-			continue;
-		}
-		if (bank_recoveryTime(command->nextCmd, schedule.bank_op[bank_number(command)]) > schedule.bank_time[bank_number(command)])
-		{
-			#ifdef DEBUG
-			Printf("mem_sim.inOrderExecution():Blocked in bank.\n");
-			#endif
-			uint8_t newAge = schedule.bank_time[bank_number(command)] + bank_recoveryTime(schedule.bank_op[bank_number(command)], command->nextCmd);
-			setAge(i, newAge, commandQueue);
-			reserveTime(newAge, command, &schedule);
-			continue;
-		}
-		setAge(i, sendMemCmd(command), commandQueue);
-		return;
 	}
+}
+
+uint8_t scheduleRequest(uint8_t timeTillCmd, inputCommandPtr_t request, dimmSchedule_t *schedule)
+{
+	if (timeTillCmd > 0)
+	{
+		return reserveTime(timeTillCmd, request, schedule);
+	}
+	
+	if (dimm_recoveryTime(request->nextCmd, schedule->dimm_op) > schedule->dimm_time)
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.scheduleRequest():Blocked in dimm\n");
+		#endif
+		return reserveTime(schedule->dimm_time + dimm_recoveryTime(schedule->dimm_op, request->nextCmd), request, schedule); 
+	}
+	if (group_recoveryTime(request->nextCmd, schedule->grp_op[request->bankGroups]) > schedule->grp_time[request->bankGroups])
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.scheduleRequest():Blocked in bank group.\n");
+		#endif
+		return reserveTime(schedule->grp_time[request->bankGroups]+group_recoveryTime(schedule->grp_op[request->bankGroups], request->nextCmd), request, schedule);
+	}
+	if (bank_recoveryTime(request->nextCmd, schedule->bank_op[bank_number(request)]) > schedule->bank_time[bank_number(request)])
+	{
+		#ifdef DEBUG
+		Printf("mem_sim.scheduleRequest():Blocked in bank.\n");
+		#endif
+		return reserveTime(schedule->bank_time[bank_number(request)]+bank_recoveryTime(schedule->bank_op[bank_number(request)], request->nextCmd), request, schedule);
+	}
+	return 0;
 }
 
 uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule)
@@ -693,66 +805,6 @@ uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *sched
 	printSchedule(schedule);
 	#endif
 	return cmdTime;
-}
-
-/**
- * @fn		prioritizeCommand
- * @brief	Chooses a single command, if any to issue to the DIMM this cycle
- *
- * @detail	Scans through command states and picks one on the following priorities:
- *		1. Spent > 500 CPU cycles in the queue
- *		2. The oldest command that is ready for a DIMM command
- *
- * @param	cmdsRdy	An array that has true values that indicate the same index+1 in the command queue is ready to be serviced
- * @return	true if a command was issued to the DIMM.
- */
-bool prioritizeCommand(bool *cmdsRdy)
-{
-	bool bankGroupTouched[4] = {false, false, false, false}; //Used to track if a command has priority access to the bank group
-	inputCommandPtr_t command;
-
-	for (unsigned i = 1; i <= commandQueue->size; i++)
-	{
-		command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
-		//If this bank group is already waiting for a higher priority command, don't analyze it.
-		if (bankGroupTouched[command->bankGroups])
-		{
-			cmdsRdy[i-1] = false;//Make sure this command isn't serviced by any other check
-			continue;
-		}
-
-		if(getTimeInQueue(i, commandQueue) >= MAX_TIME_IN_QUEUE) //Attempt to service cmds that are older than MAX_TIME_IN_QUEUE
-		{
-			if (getAge(i, commandQueue) == 0)
-			{
-				#ifdef VERBOSE
-				writeOutput(0, "%llu: Prioritizing memory request at index %u that has spent %u in queue.", currentTime, i, getTimeInQueue(i, commandQueue));
-				#endif
-				setAge(i, sendMemCmd(command), commandQueue);
-				return true;
-			}
-			else //If they can't be serviced, then make sure no other command to the same bank is considered.
-			{
-				#ifdef VERBOSE
-				writeOutput(0, "%llu: Prioritizing memory request at index %u that has spent %u in queue. Holding all other requests to bank group %u.", currentTime, i, getTimeInQueue(i, commandQueue), command->bankGroups);
-				#endif
-				bankGroupTouched[command->bankGroups] = true;
-			}
-		}
-	}
-
-	for (int i = 0; i < commandQueue->size; i++) //If a request hasn't been serviced yet, try and service the oldest ready request
-	{
-		if (cmdsRdy[i])
-		{
-			#ifdef VERBOSE
-			writeOutput(0, "%llu: No prioritized requests are ready for a DIMM command. Servicing request at index %u", currentTime, i+1);
-			#endif
-			setAge(i+1, sendMemCmd(peak_queue_item(i+1, commandQueue)), commandQueue);
-			return true;
-		}
-	}
-	return false;
 }
 
 /**
@@ -875,6 +927,48 @@ unsigned scanCommands(bool* cmdsRdy)
 		}
 	}
 	return numCmdsRdy;
+}
+
+/**
+ * @fn		updateAllRequests
+ * @brief	Updates the state of all requests in the queue
+ *
+ * @detail	Will update the state of all requests and setup the provided boolean array.
+ *		Requests that still require at least one DRAM cmd will have their index in
+ *		the array initialized to false. Requests that are just waiting for their data
+ *		to finish will have their index in the array initialized to true.
+ * @param	touched	Array tracking which requests have been examined. All requests that
+ */
+void updateAllRequests(bool *touched)
+{
+	inputCommandPtr_t current;
+	for (unsigned i = 1; i <= commandQueue->size; i++)
+	{
+		current = peakCommand(i);
+		if (current->nextCmd == REMOVE)
+		{
+			if (getAge(i, commandQueue) == 0)
+			{
+				#ifdef VERBOSE
+				writeOutput(0, "%llu: Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, current->cpuCycle, getCommandString(current->operation), current->bankGroups, current->banks, current->rows, current->upperColumns);
+				#endif
+				if (statFlag)
+				{
+					request_t *info = Malloc(sizeof(request_t));
+					info->timeInQueue = getTimeInQueue(i, commandQueue);
+					info->type = current->operation;
+					addRequest(info);
+				}
+				free(queueRemove(commandQueue,i));
+				i--;
+				continue;
+			}
+			touched[i-1] = true;
+			continue;
+		}
+		setAge(i, updateCmdState(current), commandQueue);
+		touched[i-1] = false;
+	}
 }
 
 /**
