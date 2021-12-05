@@ -481,8 +481,8 @@ char *parseArgs(int argc, char **argv)
 	char *fileName = NULL;
 	char *outFile = NULL;
 	bool out_flag = false;
-	bool strictFlag = false;
-	bool optimizedFlag = false;
+	strictFlag = false;
+	optimizedFlag = false;
 	statFlag = false;
 
 	for (int i = 1; i < argc; i++) // For each string in argv
@@ -539,6 +539,9 @@ char *parseArgs(int argc, char **argv)
 		}
 		else if (!strcmp(argv[i], "-strict"))
 		{
+			#ifdef DEBUG
+			Printf("Setting -strict flag\n");
+			#endif
 			strictFlag = true;
 		}
 		else if (!strcmp(argv[i], "-fch")) 
@@ -633,6 +636,14 @@ char *parseArgs(int argc, char **argv)
  */
 void serviceCommands()
 {
+	#ifdef DEBUG
+	if (optimizedFlag)
+		Printf("mem_sim.serviceCommands():Using optimized algorithm\n");
+	else if (strictFlag)
+		Printf("mem_sim.serviceCommands():Using strict algorithm\n");
+	else
+		Printf("mem_sim.serviceCommands():Using default algorithm\n");
+	#endif
 	if (optimizedFlag)
 		optimizedExecution();
 	else if (strictFlag)
@@ -923,6 +934,9 @@ void strictInOrdExecution()
 		schedule.bank_op[i] = NONE;
 	
 	//Update all requests in the queue
+	bool bankTouched[BANK_GROUPS*BANKS_PER_GROUP];
+	for (int i = 0; i < BANK_GROUPS*BANKS_PER_GROUP; i++)
+		bankTouched[i] = false;
 	bool touched[commandQueue->size];
 	updateAllRequests(touched);
 	
@@ -932,30 +946,44 @@ void strictInOrdExecution()
 	//Start at the top of the queue and go down, giving priority to the oldest requests
 	for (unsigned i = 1; i <= commandQueue->size; i++)
 	{
-		if (!touched[i-1]) //Skip requests that are just waiting for data
+		if (touched[i-1]) //Skip requests that are just waiting for data
 			continue;
-		
+
 		inputCommandPtr_t current = peakCommand(i);
-		if ((current->nextCmd == READ || current->nextCmd == WRITE) && firstAccess)
+		if (bankTouched[bank_number(current)])
 		{
-			//If this is the first RD/WR operation, lower the flag and save the index
-			firstAccess = false;
-			indexOfFirstAccess = i;
-			//Send the cmd if able, otherwise schedule it
-			if (processRequest(i, &schedule))
-				return;
-			else
-				continue;
-		}
-		else
-		{
-			//If another RD/WR has already been scheduled
-			uint8_t timeTillFirstAccess = getAge(indexOfFirstAccess, commandQueue);
-			uint8_t timeTillCmd = getAge(i, commandQueue);
-			//If this request would be ready first, schedule it for after priority rd/wr. Otherwise use expected cmd time
-			uint8_t schedTime = (timeTillFirstAccess + SCALE_FACTOR > timeTillCmd) ? timeTillFirstAccess + SCALE_FACTOR : timeTillCmd;
-			setAge(i, scheduleRequest(schedTime, current, &schedule), commandQueue); //Schedule request
+			#ifdef DEBUG
+			Printf("mem_sim.strictInOrderExecution(): Request from bank %u has already been touched\n", bank_number(current));
+			#endif
 			continue;
+		}
+		bankTouched[bank_number(current)] = true;
+		#ifdef DEBUG
+		Printf("mem_sim.strictInOrderExecution(): Examining request at index %u\n", i);
+		#endif
+		if ((current->nextCmd == READ || current->nextCmd == WRITE))
+		{
+			if (firstAccess)
+			{
+				//If this is the first RD/WR operation, lower the flag and save the index
+				firstAccess = false;
+				indexOfFirstAccess = i;
+				//Send the cmd if able, otherwise schedule it
+				if (processRequest(i, &schedule))
+					return;
+				else
+					continue;
+			}
+			else
+			{
+				//If another RD/WR has already been scheduled
+				uint8_t timeTillFirstAccess = getAge(indexOfFirstAccess, commandQueue);
+				uint8_t timeTillCmd = getAge(i, commandQueue);
+				//If this request would be ready first, schedule it for after priority rd/wr. Otherwise use expected cmd time
+				uint8_t schedTime = (timeTillFirstAccess + SCALE_FACTOR > timeTillCmd) ? timeTillFirstAccess + SCALE_FACTOR : timeTillCmd;
+				setAge(i, scheduleRequest(schedTime, current, &schedule), commandQueue); //Schedule request
+				continue;
+			}
 		}
 
 		//Activates and precharges can be sent as long as they don't slow higher priority rd/wr
