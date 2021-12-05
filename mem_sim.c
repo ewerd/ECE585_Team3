@@ -2,10 +2,34 @@
  * @file	mem_sim.c
  * @brief	Top level memory simulator for ECE 585 final project.
  *
- * @detail	TODO
+ * @detail	Simulates a DRAM memory controller that implements several different scheduling policies. 
+ *		All policies use an open page policy and exploit bank paralellism.
+ * @flags	-o <output_file>	Send output to a .txt file. If output_file is blank, will default
+ *					to output.txt
+ *		-stat	Displays statistics after completing the simulation. Statistics include
+ *			min, max, average, and median time in queue for each type of operation
+ *			as well as for the aggregate total for all commands
+ *		-<policy>	Possible policies are:
+ *			strict	The memory controller sticks to a strict in order scheduling
+ *				fetches, reads, and writes will be serviced in the exact
+ *				order that they arrive.
+ *			opt	Our optimized policy. This algorithm prioritizes fetches, reads, and writes
+ *				(in that order) to open rows, then fetches, reads, and writes(in that order)
+ *				to other rows. To prevent starvation, each operation type has an upper
+ *				threshold for time in queue and, once a request passes that threshold, it
+ *				moves to the highest priority. Lower priority requests may be serviced
+ *				earlier than higher priority requests but only if doing so does not slow
+ *				down higher priority requests in any way. The thresholds can be set by the user
+ *				with the -<fch/rd/wr> <threshold> flags or the default ones will be used.
+ *			<none>	This is the default policy which gives priority to the oldest requests
+ *				in the queue. Newer requests can still be serviced sooner but only if
+ *				processing those requests does not slow down any older request.
  *
- * @date	TODO
- * @authors	TODO
+ * @date	Dec. 6, 2021
+ * @author	Stephen Short	(steshort@pdx.edu)
+ * @author	Drew Seidel	(dseidel@pdx.edu)
+ * @author	Michael Weston	(miweston@pdx.edu)
+ * @author	Braden Harwood 	(bharwood@pdx.edu)
  */
 
 #include <stdarg.h>
@@ -21,10 +45,6 @@
 #define BANK_GROUPS 4
 #define BANKS_PER_GROUP 4
 #define ROWS_PER_BANK 32768
-
-#define FCH_THRSHLD_TIME_IN_QUEUE	500
-#define RD_THRSHLD_TIME_IN_QUEUE	1000
-#define WR_THRSHLD_TIME_IN_QUEUE	2000
 
 typedef struct{
 	uint8_t			dimm_time;
@@ -56,7 +76,6 @@ unsigned indexHighestThrshld(bool* touched);
 unsigned indexCmdWithOpenRow(bool* touched, operation_t cmd);
 void inOrderExecution(void);
 int sendMemCmd(inputCommandPtr_t command);
-unsigned scanCommands(bool* cmdsRdy);
 void updateAllRequests(bool *touched);
 int updateCmdState(inputCommandPtr_t command);
 bool processRequest(unsigned index, dimmSchedule_t *schedule);
@@ -75,14 +94,20 @@ void printSchedule(dimmSchedule_t *sched);
 /*
  * Global variables
  */
-unsigned long long currentTime;
-queuePtr_t commandQueue;
-queuePtr_t outputBuffer;
-parser_t *parser;
-dimm_t *dimm;
-FILE *output_file;
-bool optimizedFlag;
-bool statFlag;
+unsigned long long currentTime; //Current simulation time
+queuePtr_t commandQueue; //Queue for storing memory requests from input trace
+queuePtr_t outputBuffer; //If running VERBOSE build, stores output messages
+parser_t *parser; //Parses input file to create inputCommand_t structs
+dimm_t *dimm; //The DIMM struct that the controller is sending DRAM cmds to
+FILE *output_file; //Output stream if specified by the user. Defaults to stdout
+bool optimizedFlag; //Enables the optimized scheduling algorithm
+bool statFlag; //Enables printing statistics at the completion of the simulation
+
+// Time in queue thresholds for each operation. Used with the -opt flag 
+// scheduling.
+uint16_t fchThrshld = 500;
+uint16_t rdThrshld = 1000;
+uint16_t wrThrshld = 2000;
 
 int main(int argc, char **argv)
 {
@@ -90,8 +115,6 @@ int main(int argc, char **argv)
 
 	// Initialize global time variable
 	currentTime = 0;
-
-	// output_file = Fopen("output.txt", "w");
 
 	#ifdef DEBUG
 	Printf("mem_sim: Completed initializations. Starting simulation.\n");
@@ -590,7 +613,8 @@ void optimizedExecution()
 
 	bool touched[commandQueue->size]; //Used to track which requests have already been examined
 	updateAllRequests(touched);
-
+	
+	//Process all requests that have exceeded their threshold time in queue. Largest excess time to smallest
 	for (unsigned index = indexHighestThrshld(touched); index != 0; index = indexHighestThrshld(touched))
 	{
 		#ifdef DEBUG
@@ -601,20 +625,8 @@ void optimizedExecution()
 		
 		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
-	
-	#ifdef DEBUG
-	Printf("mem_sim.optimizedExecution(): After TIQ threshold:\n");
-	Printf("\t[\t");
-	for (unsigned i = 0; i < commandQueue->size; i++)
-	{
-		if (touched[i])
-			Printf("t\t");
-		else
-			Printf("f\t");
-	}
-	Printf("]\n");
-	#endif
 
+	//Process all fetch requests that target an already activated row
 	for (unsigned index = indexCmdWithOpenRow(touched, IFETCH); index != 0; index = indexCmdWithOpenRow(touched, IFETCH))
 	{
 		#ifdef DEBUG
@@ -625,20 +637,8 @@ void optimizedExecution()
 		
 		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
-	
-	#ifdef DEBUG
-	Printf("mem_sim.optimizedExecution(): After Fetch to open row:\n");
-	Printf("\t[\t");
-	for (unsigned i = 0; i < commandQueue->size; i++)
-	{
-		if (touched[i])
-			Printf("t\t");
-		else
-			Printf("f\t");
-	}
-	Printf("]\n");
-	#endif
 
+	//Process all read requests that target an already activated row
 	for (unsigned index = indexCmdWithOpenRow(touched, RD); index != 0; index = indexCmdWithOpenRow(touched, RD))
 	{
 		#ifdef DEBUG
@@ -649,20 +649,8 @@ void optimizedExecution()
 		
 		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
-	
-	#ifdef DEBUG
-	Printf("mem_sim.optimizedExecution(): After Read to open row:\n");
-	Printf("\t[\t");
-	for (unsigned i = 0; i < commandQueue->size; i++)
-	{
-		if (touched[i])
-			Printf("t\t");
-		else
-			Printf("f\t");
-	}
-	Printf("]\n");
-	#endif
 
+	//Process all write requests that target an already activated row
 	for (unsigned index = indexCmdWithOpenRow(touched, WR); index != 0; index = indexCmdWithOpenRow(touched, WR))
 	{
 		#ifdef DEBUG
@@ -674,19 +662,7 @@ void optimizedExecution()
 		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
 	
-	#ifdef DEBUG
-	Printf("mem_sim.optimizedExecution(): After Write to open row:\n");
-	Printf("\t[\t");
-	for (unsigned i = 0; i < commandQueue->size; i++)
-	{
-		if (touched[i])
-			Printf("t\t");
-		else
-			Printf("f\t");
-	}
-	Printf("]\n");
-	#endif
-	
+	//Process all fetches, oldest to newest
 	for (unsigned index = indexOldestCmd(touched, IFETCH); index != 0; index = indexOldestCmd(touched, IFETCH))
 	{
 		#ifdef DEBUG
@@ -698,19 +674,7 @@ void optimizedExecution()
 		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
 	
-	#ifdef DEBUG
-	Printf("mem_sim.optimizedExecution(): After other fetches:\n");
-	Printf("\t[\t");
-	for (unsigned i = 0; i < commandQueue->size; i++)
-	{
-		if (touched[i])
-			Printf("t\t");
-		else
-			Printf("f\t");
-	}
-	Printf("]\n");
-	#endif
-	
+	//Process all reads, oldest to newest
 	for (unsigned index = indexOldestCmd(touched, RD); index != 0; index = indexOldestCmd(touched, RD))
 	{
 		#ifdef DEBUG
@@ -722,19 +686,7 @@ void optimizedExecution()
 		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
 	
-	#ifdef DEBUG
-	Printf("mem_sim.optimizedExecution(): After other reads:\n");
-	Printf("\t[\t");
-	for (unsigned i = 0; i < commandQueue->size; i++)
-	{
-		if (touched[i])
-			Printf("t\t");
-		else
-			Printf("f\t");
-	}
-	Printf("]\n");
-	#endif
-	
+	//Process all writes, oldest to newest
 	for (unsigned index = indexOldestCmd(touched, WR); index != 0; index = indexOldestCmd(touched, WR))
 	{
 		#ifdef DEBUG
@@ -745,21 +697,8 @@ void optimizedExecution()
 		
 		touched[index-1] = true; //Otherwise, update this index as processed and continue scheduling
 	}
-	
-	#ifdef DEBUG
-	Printf("mem_sim.optimizedExecution(): After other writes:\n");
-	Printf("\t[\t");
-	for (unsigned i = 0; i < commandQueue->size; i++)
-	{
-		if (touched[i])
-			Printf("t\t");
-		else
-			Printf("f\t");
-	}
-	Printf("]\n");
-	#endif
 
-	//Making sure no commands were missed
+	//Make sure no commands were missed
 	for (unsigned i = 1; i <= commandQueue->size; i++)
 	{
 		if (!touched[i-1])
@@ -767,6 +706,21 @@ void optimizedExecution()
 	}
 }
 
+/**
+ * @fn		indexOldestCmd
+ * @brief	Return the oldest request of a specific type from the untouched requests
+ *
+ * @detail	Scans through all untouched requests in the queue indicated by a value of
+ *		false at that request's index-1 in the provided boolean array. Finds the
+ *		oldest request that matches the specified operation and returns the index
+ *		to that request in the queue.
+ * @param	touched	Array tracking which indexes have already been analyzed. A value
+ *			of true at a specific index mean that the request in the queue at
+ *			index + 1 can be ignored by this function
+ * @param	cmd	The specific operation being scanned for. IFETCH, RD, or WR.
+ * @return	The index of the oldest, unanalyzed operation in the queue. 0 if none
+ *		exist.
+ */
 unsigned indexOldestCmd(bool* touched, operation_t cmd)
 {
 	inputCommandPtr_t current;
@@ -782,6 +736,21 @@ unsigned indexOldestCmd(bool* touched, operation_t cmd)
 	return 0;
 }
 
+/**
+ * @fn		indexCmdWithOpenRow
+ * @brief	Finds the index of the oldest specified operation in the queue that targets an open row
+ *
+ * @detail	Scans through all untouched requests in the queue (indicated by a value of
+ *		false at that request's index-1 in the provided boolean array). Finds the
+ *		oldest request that matches the specified operation and targets an open row
+ *		in the DIMM. Returns the index to that request in the queue.
+ * @param	touched	Array tracking which indexes have already been analyzed. A value
+ *			of true at a specific index mean that the request in the queue at
+ *			index + 1 can be ignored by this function
+ * @param	cmd	The specific operation being scanned for. IFETCH, RD, or WR.
+ * @return	The index of the oldest, unanalyzed operation in the queue that targets an open row. 
+ *		0 if none exist.
+ */
 unsigned indexCmdWithOpenRow(bool* touched, operation_t cmd)
 {
 	inputCommandPtr_t current;
@@ -827,13 +796,13 @@ unsigned indexHighestThrshld(bool* touched)
 		switch(current->operation)
 		{
 			case IFETCH:
-			threshold = FCH_THRSHLD_TIME_IN_QUEUE;
+			threshold = fchThrshld;
 			break;
 			case RD:
-			threshold = RD_THRSHLD_TIME_IN_QUEUE;
+			threshold = rdThrshld;
 			break;
 			case WR:
-			threshold = WR_THRSHLD_TIME_IN_QUEUE;
+			threshold = wrThrshld;
 			break;
 		}
 		if (tiq < threshold)
@@ -850,63 +819,49 @@ unsigned indexHighestThrshld(bool* touched)
 
 /**
  * @fn		inOrderExecution
- * @brief	Sends command to DIMM with a schedule for in order execution
+ * @brief	Sends command to DIMM with a schedule for loose in-order execution
  *
- * @detail	Determines which command, if any, should be issued to the DIMM this clock tick
+ * @detail	This algorithm will prioritize the oldest requests but it will allow newer
+ *		requests to be serviced but only if doing so does not slow down the time to
+ *		satisfy older requests
  */
 void inOrderExecution()
 {
+	//Setup the scheduler
 	dimmSchedule_t schedule;
 	schedule.dimm_op = NONE;
 	for (int i = 0; i < BANK_GROUPS; i++)
 		schedule.grp_op[i] = NONE;
 	for (int i = 0; i < BANK_GROUPS*BANKS_PER_GROUP; i++)
 		schedule.bank_op[i] = NONE;
+	
+	//Update all requests in the queue
+	bool touched[commandQueue->size];
+	updateAllRequests(touched);
 
+	//Start at the top of the queue and go down, giving priority to the oldest requests
 	for (unsigned i = 1; i <= commandQueue->size; i++)
 	{
-		inputCommandPtr_t command = peakCommand(i);
-		if (command->nextCmd == REMOVE)
-		{
-			if (getAge(i, commandQueue) == 0)
-			{
-				#ifdef VERBOSE
-				writeOutput(0, "%llu: Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
-				#endif
-				if (statFlag)
-				{
-					request_t *info = Malloc(sizeof(request_t));
-					info->timeInQueue = getTimeInQueue(i, commandQueue);
-					inputCommandPtr_t oldCmd = queueRemove(commandQueue, i);
-					info->type = oldCmd->operation;
-					addRequest(info);
-					free(oldCmd);
-				}
-				else
-				{
-					free(queueRemove(commandQueue,i));
-				}
-				i--;
-			}
-			continue;				
-		}
-		int timeTillCmd =  updateCmdState(command);
-		#ifdef DEBUG
-		Printf("mem_sim.inOrderExecution():At index %u: Age:%u nextCmd:%s Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u\n", i, timeTillCmd, nextCmdToString(command->nextCmd), command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
-		#endif
-		
-		timeTillCmd = scheduleRequest(timeTillCmd, command, &schedule);
-		
-		if (timeTillCmd > 0)
-			setAge(i, timeTillCmd, commandQueue);
-		else
-		{
-			setAge(i, sendMemCmd(command), commandQueue);
-			return;
-		}
+		if (!touched[i-1]) //Skip requests that are just waiting for data
+			if (processRequest(i, &schedule)) // If true is returned, then DIMM cmd was sent
+				return;
 	}
 }
 
+/**
+ * @fn		processRequest
+ * @brief	Attempts to execute the request at the given index. Schedules it if not executed
+ *
+ * @detail	Checks with the provided schedule if the request at the given index in the queue
+ *		can be executed without getting in the way of any higher priority requests. If
+ *		a dimm command can't be sent, then this request is added to the schedule to
+ *		prevent lower priority requests from getting in its way and its age is updated
+ *		with the expected cycles till a DRAM cmd can be issued to service this request
+ * @param	index	Index in the queue of the request of interest
+ * @param	schedule	Pointer to dimmSchedule_t that will be holding schedule information
+ *				of all higher priority request.
+ * @return	True if a DRAM command is issued. False otherwise.
+ */
 bool processRequest(unsigned index, dimmSchedule_t *schedule)
 {
 	inputCommandPtr_t request = peakCommand(index);
@@ -924,6 +879,19 @@ bool processRequest(unsigned index, dimmSchedule_t *schedule)
 	return false;
 }
 
+/**
+ * @fn		scheduleRequest
+ * @brief	Checks if a request can have a DIMM cmd issued without slowing any higher priority requests
+ *
+ * @detail	Uses entries in the schedule to examine the next time the DIMM, target group, and target bank
+ *		to see if there is nothing scheduled or, if there is, can a DRAM cmd be issued to progress
+ *		this request without slowing down the higher priority request that's already on the schedule
+ * @param	timeTillCmd	CPU cycles until this request will be ready for its next DRAM command
+ * @param	request	The request being scheduled
+ * @param	schedule	Pointer to the schedule struct
+ * @return	Estimated time till the next DRAM cmd can be issued for this request without distrupting
+ *		higher priority requests.
+ */
 uint8_t scheduleRequest(uint8_t timeTillCmd, inputCommandPtr_t request, dimmSchedule_t *schedule)
 {
 	if (timeTillCmd > 0)
@@ -955,6 +923,18 @@ uint8_t scheduleRequest(uint8_t timeTillCmd, inputCommandPtr_t request, dimmSche
 	return 0;
 }
 
+/**
+ * @fn		reserveTime
+ * @brief	Reserves time in the schedule for a priority request
+ *
+ * @detail	Reserves time separately in the dimm, target group, and target bank for this request. Reserving time
+ *		in the schedule ensures that other, lower priority requests, won't issue a DRAM command if it would
+ *		cause this request's scheduled time in the DIMM/group/bank to be delayed.
+ * @param	cmdTime	Time this request will be ready for its next DRAM command
+ * @param	command	Pointer to the request being scheduled
+ * @param	schedule	Pointer to the schedule struct
+ * @return	Estimated time in CPU clock cycles until a DRAM can be issued for this request.
+ */
 uint8_t reserveTime(int cmdTime, inputCommandPtr_t command,dimmSchedule_t *schedule)
 {
 	if (schedule->bank_op[bank_number(command)] == NONE ||
@@ -1083,56 +1063,6 @@ int sendMemCmd(inputCommandPtr_t command)
 	Fprintf(stderr, "Error in mem_sim.sendMemCmd(): Invalid command serviced. retVal = %d\n", retVal);
 	garbageCollection();
 	exit(EXIT_FAILURE);
-}
-
-/**
- * @fn		scanCommands
- * @brief	Updates the state of all requests in the command queue
- *
- * @detail	Updates the age (time until next action required) and next DRAM command (READ, WRITE, ACTIVATE, PRECHARGE, or
- *		REMOVE(from queue)) for each memory request in the command queue. Updates the array of bools to reflect
- *		which requests can be serviced this clock cycle. A value of true in cmdsRdy[x] indicates that the
- *		request in the command queue at index 'x' is ready to have a DRAM command issued.
- * @param	cmdsRdy	Array of bools updated to true if the request in the command queue at the same index is ready
- *			for a DRAM command to be issued. False otherwise
- * @return	Number of requests in the command queue that are ready to be serviced with a DRAM command
- */
-unsigned scanCommands(bool* cmdsRdy)
-{
-	unsigned numCmdsRdy = 0;
-	for (int i = 1; i <= commandQueue->size; i++)
-	{
-		cmdsRdy[i-1] = false;
-		inputCommandPtr_t command = (inputCommandPtr_t)peak_queue_item(i, commandQueue);
-		if (command->nextCmd == REMOVE) 
-		{
-			if (getAge(i, commandQueue) == 0)
-			{
-				#ifdef VERBOSE
-				writeOutput(0, "%llu: Completed request from Time:%llu Type:%6s Group:%u, Bank:%u, Row:%u, Upper Column:%u", currentTime, command->cpuCycle, getCommandString(command->operation), command->bankGroups, command->banks, command->rows, command->upperColumns);
-				#endif
-				free(queueRemove(commandQueue,i));
-				i--;
-			}
-		}
-		else
-		{
-			int newAge = updateCmdState(command);
-			setAge(i, newAge, commandQueue);
-			#ifdef DEBUG
-				Printf("mem_sim: Command %u updated. nextCmd: %s, Age: %d\n", i, nextCmdToString(command->nextCmd), newAge);
-			#endif
-			if (newAge == 0)
-			{
-				#ifdef DEBUG
-				Printf("mem_sim.scanCommands(): Command %d ready.\n", i);
-				#endif
-				cmdsRdy[i-1] = true;
-				numCmdsRdy++;
-			}
-		}
-	}
-	return numCmdsRdy;
 }
 
 /**
