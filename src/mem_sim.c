@@ -4,7 +4,8 @@
  *
  * @detail	Simulates a DRAM memory controller that implements several different scheduling policies. 
  *		All policies use an open page policy and exploit bank paralellism.
- * @flags	-o <output_file>	Send output to a .txt file. If output_file is blank, will default
+ * @flags	-h	Displays help that lists these flags.
+ *		-o <output_file>	Send output to a .txt file. If output_file is blank, will default
  *					to output.txt
  *		-q <number>	Sets the size of the request queue. Defaults to 16
  *		-stat	Displays statistics after completing the simulation. Statistics include
