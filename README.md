@@ -79,6 +79,7 @@ The simulation program sim.exe has the following flags:
   - strict  : The memory controller sticks to a strict in order scheduling fetches, reads, and writes will be serviced in the exact order that they arrive.
   - opt     : Our optimized policy. This algorithm prioritizes fetches, reads, and writes (in that order) to open rows, then fetches, reads, and writes(in that order) to other rows. To prevent starvation, each operation type has an upper threshold for time in queue and, once a request passes that threshold, it moves to the highest priority. Lower priority requests may be serviced earlier than higher priority requests but only if doing so does not slow down higher priority requests in any way. The thresholds can be set by the user with the -<fch/rd/wr> <threshold> flags or the default ones will be used.
   - \<none> : This is the default policy which gives priority to the oldest requests in the queue. Newer requests can still be serviced sooner but only if processing those requests does not slow down any older request.
+  - q \<#> : This allows you to set the queue size. Default is 16 if not provided, but will warn you that no queue size was provided.
 - Other than these flags, an input file must be provided and must meet the specifications described in docs/specifications.md.
 
 ### make
