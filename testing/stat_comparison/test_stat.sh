@@ -15,32 +15,32 @@ echo " "
 echo " "
 echo " "
 echo "Miss Test File:  Basic Run Statistics"
-./sim.exe testing/stat_comparison/test_file/All_Miss.txt -stat | testing/stat_comparison/stat_compare
+./sim.exe testing/stat_comparison/test_file/All_Miss.txt -stat | testing/stat_comparison/stat_compare.exe
 
 echo ""
 echo "Miss Test File: Optimal Run Statistics"
-./sim.exe testing/stat_comparison/test_file/All_Miss.txt -stat -opt | testing/stat_comparison/stat_compare
+./sim.exe testing/stat_comparison/test_file/All_Miss.txt -stat -opt | testing/stat_comparison/stat_compare.exe
 
 
 echo " "
 echo " "
 echo " "
 echo "Hit Test File: Basic Run Statistics"
-./sim.exe testing/stat_comparison/test_file/countThrough_bankgroup.txt -stat | testing/stat_comparison/stat_compare
+./sim.exe testing/stat_comparison/test_file/countThrough_bankgroup.txt -stat | testing/stat_comparison/stat_compare.exe
 
 
 echo " "
 echo "Hit Test File: Optimal Run Statistics"
-./sim.exe testing/stat_comparison/test_file/countThrough_bankgroup.txt -stat -opt | testing/stat_comparison/stat_compare
+./sim.exe testing/stat_comparison/test_file/countThrough_bankgroup.txt -stat -opt | testing/stat_comparison/stat_compare.exe
 
 
 echo " "
 echo " "
 echo " "
 echo "Random Test File: Basic Run Statistics"
-./sim.exe testing/stat_comparison/test_file/Long_Random_Test.txt -stat | testing/stat_comparison/stat_compare
+./sim.exe testing/stat_comparison/test_file/Long_Random_Test.txt -stat | testing/stat_comparison/stat_compare.exe
 
 
 echo " "
 echo "Random Test File: Optimal Run Statistics"
-./sim.exe testing/stat_comparison/test_file/Long_Random_Test.txt -stat -opt | testing/stat_comparison/stat_compare
+./sim.exe testing/stat_comparison/test_file/Long_Random_Test.txt -stat -opt | testing/stat_comparison/stat_compare.exe
