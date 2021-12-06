@@ -8,6 +8,7 @@
  *
  * @date	11/5/21
  * @author	Stephen Short(steshort@pdx.edu)
+ * @author	Drew Seidel(dseidel@pdx.edu)
  */
 
 #include <stdlib.h>
