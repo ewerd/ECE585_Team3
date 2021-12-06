@@ -79,6 +79,7 @@ void strictInOrdExecution(void);
 int sendMemCmd(inputCommandPtr_t command);
 void updateAllRequests(bool *touched);
 int updateCmdState(inputCommandPtr_t command);
+void help(void); 
 bool processRequest(unsigned index, dimmSchedule_t *schedule);
 uint8_t scheduleRequest(uint8_t timeTillCmd, inputCommandPtr_t request, dimmSchedule_t *schedule);
 uint8_t reserveTime(int cmdTime, inputCommandPtr_t command, dimmSchedule_t *schedule);
@@ -598,6 +599,11 @@ char *parseArgs(int argc, char **argv)
 					wrThrshld = (uint16_t)convert;	
 			}
 		}
+		else if (!strcmp(argv[i], "-h")){
+
+				help(); 
+		
+		}
 		else
 		{
 			Printf("Invalid argument: %s\n", argv[i]);
@@ -606,7 +612,11 @@ char *parseArgs(int argc, char **argv)
 	// Check bounds on parameters and assert defaults and/or print error messages
 	if (fileName == NULL)
 	{
-		Fprintf(stderr, "Error in mem_sim: No input file name provided.\n");
+		Fprintf(stderr, "\nError in mem_sim: No input file name provided.\n");
+		Fprintf(stderr, "Run with './sim.exe -o outputFilename inputFilename'\n"); 
+		Fprintf(stderr, "Add '-opt' flag for optmized scheduling.\n"); 
+		Fprintf(stderr, "Add '-stat' flag to show performance statistics.\n"); 
+		Fprintf(stderr, "See README for more information.\n\n");
 	}
 
 	if(!out_flag)
@@ -1291,6 +1301,26 @@ int updateCmdState(inputCommandPtr_t command)
 	Fprintf(stderr, "Error in mem_sim.updateCmdState(): Ended function with error code of %d.\n", timeTillCmd);
 	garbageCollection();
 	exit(EXIT_FAILURE);
+}
+
+void help(void){
+		
+	
+		Fprintf(stdout, "\nHelp Flag Detected: \n\n");
+		Fprintf(stdout, "@detail\n"); 
+		Fprintf(stdout, "Simulates a DRAM memory controller that implements several different scheduling policies.\nAll policies use an open page policy and exploit bank paralellism.\n\n"); 
+		Fprintf(stdout, "@flags\n"); 
+		Fprintf(stdout, "-o: <output_file>    Send output to a .txt file. If output_file is blank, will default\n"); 
+		Fprintf(stdout, "\n-stat:    Displays statistics after completing the simulation.\nStatistics include min, max, average, and median time in queue for each type of operation,\nas well as for the aggregate total for all commands\n");
+		Fprintf(stdout, " \n-<policy>   Possible policies are:\n");
+		Fprintf(stdout, "\n-strict: The memory controller sticks to a strict in order scheduling\nfetches, reads, and writes will be serviced in the exact order that they arrive.\n"); 
+		Fprintf(stdout, "\n-opt: Our optimized policy. This algorithm prioritizes fetches, reads, and writes(in that order)\nto open rows, then fetches, reads, and writes(in that order)to other rows.\nTo prevent starvation, each operation type has an upper threshold for time in queue and\nonce a request passes that threshold, it moves to the highest priority.\nLower priority requests may be service dearlier than higher priority requests\nbut only if doing so does not slow down higher priority requests in any way.\nThe thresholds can be set by the user with the -<fch/rd/wr> <threshold> flags\nor the default ones will be used.\n");
+		Fprintf(stdout, "\n<none>  This is the default policy which gives priority to the oldest requests\nin the queue. Newer requests can still be serviced sooner but only if\nprocessing those requests does not slow down any older request.\n\n\n");
+		Fprintf(stdout, "\nRun Time Example:\n");
+		Fprintf(stdout, "Running './sim.exe -o output.txt testing/traces/trace.txt'\nwill run default mode, and output results from inputFilename into outputFilename.\n"); 
+		Fprintf(stdout, "See README for more information.\n\n");
+		exit(0);
+
 }
 
 #ifdef VERBOSE
