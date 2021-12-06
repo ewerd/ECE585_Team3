@@ -39,12 +39,15 @@ debug : $(OBJS)
 #.PHONY to inform Make to not associate test with a file named test
 .PHONY: test
 # test runs a script that runs through all of the outputs and checks if the test case results have changed
-test: sim
+test : sim
 	./testing/test_output.sh
+
+stat_comparison : testing/stat_comparison/stat_compare.c
+	$(CC) $(CFLAGS) -o testing/stat_comparison/stat_compare testing/stat_comparison/stat_compare.c
 
 #.PHONY to inform Make to not associate statistics with a file named statistics
 .PHONY: statistics
-statistics: sim
+statistics: sim stat_comparison
 	 ./testing/stat_comparison/test_stat.sh
 
 #.PHONY to inform Make to not associate help with a file named help
@@ -63,4 +66,4 @@ help:
 #.PHONY to inform Make to not associate clean with a file named clean
 .PHONY: clean
 clean:
-	@rm -f $(OBJS) sim.exe
+	@rm -f $(OBJS) sim.exe testing/stat_comparison/stat_compare.exe

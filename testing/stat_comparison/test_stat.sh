@@ -8,8 +8,6 @@
 # Run three key tests and output statistics back to back
 
 
-make testing/stat_comparison/stat_compare
-
 echo " "
 echo "Beging Statistic Printing"
 
