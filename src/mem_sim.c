@@ -6,6 +6,7 @@
  *		All policies use an open page policy and exploit bank paralellism.
  * @flags	-o <output_file>	Send output to a .txt file. If output_file is blank, will default
  *					to output.txt
+ *		-q <number>	Sets the size of the request queue. Defaults to 16
  *		-stat	Displays statistics after completing the simulation. Statistics include
  *			min, max, average, and median time in queue for each type of operation
  *			as well as for the aggregate total for all commands
@@ -41,7 +42,6 @@
 #include "./stats/stats.h"
 
 // Parameters
-#define CMD_QUEUE_SIZE 16
 #define BANK_GROUPS 4
 #define BANKS_PER_GROUP 4
 #define ROWS_PER_BANK 32768
@@ -111,6 +111,8 @@ bool strictFlag; //Enables the strict in-order scheduling
 uint16_t fchThrshld = 500;
 uint16_t rdThrshld = 1000;
 uint16_t wrThrshld = 2000;
+
+unsigned cmdQueueSize = 16;
 
 int main(int argc, char **argv)
 {
@@ -232,7 +234,7 @@ void initSim(int argc, char **argv)
 	}
 
 	// Init queue
-	commandQueue = create_queue(CMD_QUEUE_SIZE);
+	commandQueue = create_queue(cmdQueueSize);
 	if (commandQueue == NULL)
 	{
 		Fprintf(stderr, "Error in mem_sim.iniSim(): Could not create command queue.\n");
@@ -597,6 +599,18 @@ char *parseArgs(int argc, char **argv)
 				}
 				else
 					wrThrshld = (uint16_t)convert;	
+			}
+		}
+		else if (!strcmp(argv[i], "-q")) 
+		{
+			if (i+1 == argc)
+				Fprintf(stderr, "No parameter after -q flag\n");
+			else if (!isNumber(argv[i+1]))
+				Fprintf(stderr, "Invalid argument %s after -q. Expected number\n", argv[i+1]);
+			else
+			{
+				i++;
+				cmdQueueSize = atoi(argv[i]);	
 			}
 		}
 		else if (!strcmp(argv[i], "-h")){
