@@ -4,7 +4,7 @@
 
 CC = gcc
 CFLAGS = -Wall -std=c99 -g
-OBJS = parser.o mem_queue.o mem_sim.o wrappers.o
+OBJS = parser.o mem_queue.o mem_sim.o wrappers.o dimm.o group.o bank.o stats.o sListADT.o
 LDFLAGS = -Wall -lm
 SRC = src/parser/parser.c src/queueADT/mem_queue.c src/mem_sim.c src/wrappers/wrappers.c src/dimm/dimm.c src/dimm/group.c src/dimm/bank.c src/stats/stats.c src/stats/sListADT.c
 HDRS = src/parser/parser.h src/queueADT/mem_queue.h src/wrappers/wrappers.h src/dimm/dimm.h src/dimm/group.h src/dimm/bank.h src/stats/stats.h src/stats/sListADT.h
@@ -28,6 +28,21 @@ parser.o : src/parser/parser.c src/parser/parser.h
 
 wrappers.o : src/wrappers/wrappers.c src/wrappers/wrappers.h
 	$(CC) $(CFLAGS) -c src/wrappers/wrappers.c
+
+dimm.o: src/dimm/dimm.c src/dimm/dimm.h
+	$(CC) $(CFLAGS) -c src/dimm/dimm.c
+
+group.o : src/dimm/group.c src/dimm/group.h
+	$(CC) $(CFLAGS) -c src/dimm/group.c
+
+bank.o : src/dimm/bank.c src/dimm/bank.h
+	$(CC) $(CFLAGS) -c src/dimm/bank.c
+
+stats.o: src/stats/stats.c src/stats/stats.h
+	$(CC) $(CFLAGS) -c src/stats/stats.c
+
+sListADT.o: src/stats/sListADT.c src/stats/sListADT.h
+	$(CC) $(CFLAGS) -c src/stats/sListADT.c
 
 verbose : $(OBJS)
 	$(CC) $(CFLAGS) -DVERBOSE -o $(EXE) $(SRC)
