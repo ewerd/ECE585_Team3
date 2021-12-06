@@ -23,7 +23,7 @@
 #include <stdbool.h>
 #include "group.h"
 #include "bank.h"
-#include "../wrappers.h"
+#include "../wrappers/wrappers.h"
 
 #define TRRD_S		4 //Time between row activations in different bank groups
 #define TCCD_S		4 //Time between reads in different bank groups

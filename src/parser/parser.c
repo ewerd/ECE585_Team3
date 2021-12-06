@@ -27,7 +27,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include "parser.h"
-#include "../wrappers.h"
+#include "../wrappers/wrappers.h"
 
 // Helper Functions:
 void printCurrentLine(inputCommandPtr_t currentCommandLine);

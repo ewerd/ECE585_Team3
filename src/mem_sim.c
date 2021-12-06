@@ -37,7 +37,7 @@
 #include "./parser/parser.h"
 #include "./dimm/dimm.h"
 #include <limits.h>
-#include "wrappers.h"
+#include "./wrappers/wrappers.h"
 #include "./stats/stats.h"
 
 // Parameters

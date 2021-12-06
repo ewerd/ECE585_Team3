@@ -35,7 +35,7 @@
 #define G_WRITE_TO_WRITE	TCCD_L*SCALE_FACTOR
 
 #include "bank.h"
-#include "../wrappers.h"
+#include "../wrappers/wrappers.h"
 
 typedef struct {
 	bank_t**		bank; //Array of banks

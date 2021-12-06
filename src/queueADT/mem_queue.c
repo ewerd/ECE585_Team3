@@ -10,7 +10,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
-#include "../wrappers.h"
+#include "../wrappers/wrappers.h"
 #include "mem_queue.h"
 
 // Private helper functions

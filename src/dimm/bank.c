@@ -17,7 +17,7 @@
  *
  */
 #include "bank.h"
-#include "../wrappers.h"
+#include "../wrappers/wrappers.h"
 #include "dimm.h"
 
 bank_t *bank_init(unsigned rows)
