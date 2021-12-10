@@ -74,7 +74,7 @@ The memory controller will be implemented using a queue that can hold up to 16 o
 ### sim.exe
 The simulation program sim.exe has the following flags:
 - -o <output_file>  Sends output to a .txt file. If output_file is blank, will default to output.txt
-- -stat             Displays statistics after completing the simulation. Output will be send to stdout. Statistics include min, max, average, and median time in queue for each type of operation as well as for the aggregate total for all commands.
+- -stat             Displays statistics after completing the simulation. Output will be sent to output file if -o is used, stdout otherwise. Statistics include min, max, average, and median time in queue for each type of operation as well as for the aggregate total for all commands.
 - -\<policy>
   - strict  : The memory controller sticks to a strict in order scheduling fetches, reads, and writes will be serviced in the exact order that they arrive.
   - opt     : Our optimized policy. This algorithm prioritizes fetches, reads, and writes (in that order) to open rows, then fetches, reads, and writes(in that order) to other rows. To prevent starvation, each operation type has an upper threshold for time in queue and, once a request passes that threshold, it moves to the highest priority. Lower priority requests may be serviced earlier than higher priority requests but only if doing so does not slow down higher priority requests in any way. The thresholds can be set by the user with the -<fch/rd/wr> <threshold> flags or the default ones will be used.
